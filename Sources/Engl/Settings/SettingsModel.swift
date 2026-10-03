@@ -77,17 +77,15 @@ final class SettingsModel {
         activateWindow()
         packNote = nil
         isDownloadingPack = true
-        if packConfiguration == nil {
-            packConfiguration = TranslationSession.Configuration(
-                source: Language.en.locale,
-                target: Language.ru.locale
-            )
-        } else {
-            packConfiguration?.invalidate()
-        }
+        packConfiguration = TranslationSession.Configuration(
+            source: Language.en.locale,
+            target: Language.ru.locale
+        )
     }
 
     func packDownloadFinished(failure: String?) async {
+        // the task also runs on every appearance while a configuration is set
+        packConfiguration = nil
         isDownloadingPack = false
         if let failure {
             packNote = .failure("Пакет не скачан: \(failure)")

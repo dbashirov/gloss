@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import EnglCore
 
@@ -81,6 +82,28 @@ struct CachedSecretStoreTests {
 
         #expect(try store.read("yandex-dictionary") == expected)
         #expect(base.value("yandex-dictionary") == expected)
+        #expect(base.reads == 1)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func writeDuringFirstReadIsNotOverwritten() async throws {
+        let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
+        let release = DispatchSemaphore(value: 0)
+        let base = FakeSecretStore(["yandex-dictionary": "old"], afterRead: { _ in
+            enteredContinuation.yield()
+            release.wait()
+        })
+        let store = CachedSecretStore(base)
+        let firstRead = Task.detached { try store.read("yandex-dictionary") }
+        for await _ in entered {
+            break
+        }
+
+        try store.write("new", account: "yandex-dictionary")
+        release.signal()
+        _ = try await firstRead.value
+
+        #expect(try store.read("yandex-dictionary") == "new")
         #expect(base.reads == 1)
     }
 

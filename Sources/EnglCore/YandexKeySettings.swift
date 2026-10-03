@@ -68,7 +68,10 @@ public final class YandexKeySettings {
             return
         }
         let key = draft
+        // saves run one after another, so the last one pressed is the one stored
+        let previous = saveTask
         saveTask = Task {
+            await previous?.value
             do {
                 try await store.save(key)
             } catch {

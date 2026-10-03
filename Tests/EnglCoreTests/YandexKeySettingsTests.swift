@@ -101,6 +101,35 @@ struct YandexKeySettingsTests {
         #expect(settings.draft == "second")
     }
 
+    @Test func savesAreStoredInOrder() async {
+        let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
+        let secondArrived = DispatchSemaphore(value: 0)
+        // the first write waits for the second; serialized saves never start it, hence the timeout
+        let secrets = FakeSecretStore(beforeWrite: { value in
+            guard value == "first" else {
+                secondArrived.signal()
+                return
+            }
+            enteredContinuation.yield()
+            _ = secondArrived.wait(timeout: .now() + .milliseconds(300))
+        })
+        let settings = makeSettings(secrets: secrets)
+        settings.load()
+
+        settings.draft = "first"
+        settings.save()
+        for await _ in entered {
+            break
+        }
+        settings.draft = "second"
+        settings.save()
+        await settings.saveTask?.value
+
+        #expect(secrets.value(account) == "second")
+        #expect(secrets.writes == 2)
+        #expect(settings.note == .success("Ключ сохранён"))
+    }
+
     @Test func failedSaveIsReported() async {
         let settings = makeSettings(secrets: FakeSecretStore(failsWrites: true))
         settings.load()

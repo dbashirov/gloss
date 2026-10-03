@@ -14,9 +14,20 @@ final class FakeSecretStore: SecretStore {
     }
 
     private let state: Mutex<State>
+    private let afterRead: @Sendable (String) -> Void
+    private let beforeWrite: @Sendable (String?) -> Void
 
-    init(_ values: [String: String] = [:], failsReads: Bool = false, failsWrites: Bool = false) {
+    /// `afterRead` and `beforeWrite` run outside the lock, so a test may block in them.
+    init(
+        _ values: [String: String] = [:],
+        failsReads: Bool = false,
+        failsWrites: Bool = false,
+        afterRead: @escaping @Sendable (String) -> Void = { _ in },
+        beforeWrite: @escaping @Sendable (String?) -> Void = { _ in }
+    ) {
         state = Mutex(State(values: values, failsReads: failsReads, failsWrites: failsWrites))
+        self.afterRead = afterRead
+        self.beforeWrite = beforeWrite
     }
 
     /// A store whose every call throws `Failure`.
@@ -42,16 +53,19 @@ final class FakeSecretStore: SecretStore {
     }
 
     func read(_ account: String) throws -> String? {
-        try state.withLock { state in
+        let value = try state.withLock { state in
             state.reads += 1
             guard !state.failsReads else {
                 throw Failure()
             }
             return state.values[account]
         }
+        afterRead(account)
+        return value
     }
 
     func write(_ value: String?, account: String) throws {
+        beforeWrite(value)
         try state.withLock { state in
             state.writes += 1
             guard !state.failsWrites else {
