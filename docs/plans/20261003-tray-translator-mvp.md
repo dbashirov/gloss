@@ -617,12 +617,12 @@ add-generic-password` до появления окна настроек в Task 
   строк)
 
 ### Task 15: [Final] Update documentation
-- [ ] создать `README.md`: что это, сборка (`make app`, `make install`), получение ключа
+- [x] создать `README.md`: что это, сборка (`make app`, `make install`), получение ключа
   Yandex, создание self-signed сертификата подписи и `CODESIGN_IDENTITY` (и почему без него
   Keychain спрашивает доступ после каждой пересборки), доступ к буферу обмена, использование
-- [ ] создать `CLAUDE.md` с командами сборки/тестов и правилами проекта
+- [x] создать `CLAUDE.md` с командами сборки/тестов и правилами проекта
   (EnglCore без UI, новые источники — через `TranslationProvider`)
-- [ ] move this plan to `docs/plans/completed/`
+- [x] move this plan to `docs/plans/completed/` (moved by orchestrator at completion)
 
 ## Post-Completion
 *Items requiring manual intervention or external systems - no checkboxes, informational only*
