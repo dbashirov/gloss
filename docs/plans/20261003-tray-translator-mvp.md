@@ -575,20 +575,31 @@ add-generic-password` до появления окна настроек в Task 
 - Create: `Sources/Engl/Settings/LanguagePackView.swift`
 - Create: `Sources/EnglCore/YandexKeyCheck.swift`
 - Create: `Tests/EnglCoreTests/YandexKeyCheckTests.swift`
+- ➕ Create: `Sources/Engl/Settings/SettingsModel.swift` (состояние окна: черновик ключа, автозапуск,
+  доступ к буферу, языковой пакет)
+- ➕ Create: `Sources/EnglCore/YandexKeyStore.swift` + `Tests/EnglCoreTests/YandexKeyStoreTests.swift`
+  (сохранение ключа с trim + `Router.invalidate()`)
+- ➕ Create: `Sources/EnglCore/LanguagePackState.swift` + `Tests/EnglCoreTests/LanguagePackStateTests.swift`
+- ➕ Create: `Sources/EnglCore/LaunchAtLoginState.swift` + `Tests/EnglCoreTests/LaunchAtLoginStateTests.swift`
+- ➕ Create: `Sources/Engl/MainMenu.swift` (скрытое главное меню: Cmd+C/V/A/Z/W в полях и окнах)
+- ➕ Modify: `Sources/Engl/AppDelegate.swift`, `Sources/Engl/AppEnvironment.swift`,
+  `Sources/Engl/Panel/PanelController.swift` (`dismissPopup()`),
+  `Sources/EnglCore/Providers/TextTranslator.swift` (`Language.locale` public)
 
-- [ ] раздел «Основные»: запуск при входе (`SMAppService.mainApp`, только из `/Applications`,
+- [x] раздел «Основные»: запуск при входе (`SMAppService.mainApp`, только из `/Applications`,
   `.requiresApproval` → `openSystemSettingsLoginItems()`), двойной Cmd+C вкл/выкл и интервал
   (слайдер 300–1000 мс), статус доступа к буферу (`accessBehavior`) с подсказкой
-- [ ] раздел «Словари»: поле ключа Yandex (`SecureField`), сохранение в Keychain +
+- [x] раздел «Словари»: поле ключа Yandex (`SecureField`), сохранение в Keychain +
   `Router.invalidate()`, кнопка «Проверить» — `YandexKeyCheck`: lookup `hello` через
   `YandexDictionaryProvider` с временным `InMemorySecretStore` (без нового HTTP-кода),
   ссылка на получение ключа
-- [ ] `LanguagePackView`: статус пакета en↔ru, кнопка «Скачать» (`NSApp.activate()` +
+- [x] `LanguagePackView`: статус пакета en↔ru, кнопка «Скачать» (`NSApp.activate()` +
   `.translationTask` + `prepareTranslation()`), ссылка на системные настройки как запасной путь
-- [ ] открытие окна из меню трея и из действия ошибки в панели
-- [ ] написать тесты `YandexKeyCheck` на `FakeHTTPClient`: валидный ключ, 401,
+- [x] открытие окна из меню трея и из действия ошибки в панели («Скачать языковой пакет»
+  тоже открывает окно настроек и сразу запускает скачивание)
+- [x] написать тесты `YandexKeyCheck` на `FakeHTTPClient`: валидный ключ, 401,
   нет сети, пустой ключ
-- [ ] run tests - must pass before next task
+- [x] run tests - must pass before next task
 
 ### Task 14: Verify acceptance criteria
 - [ ] verify all requirements from Overview are implemented

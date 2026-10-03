@@ -41,7 +41,7 @@ public struct SystemTextTranslator: TextTranslator {
 }
 
 extension Language {
-    var locale: Locale.Language {
+    public var locale: Locale.Language {
         Locale.Language(identifier: rawValue)
     }
 }

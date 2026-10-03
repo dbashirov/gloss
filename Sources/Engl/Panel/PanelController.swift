@@ -57,7 +57,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.contentView = hostingView
         panel.delegate = self
         panel.onCancel = { [weak self] in
-            self?.cancel()
+            self?.dismissPopup()
         }
     }
 
@@ -107,8 +107,8 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
     }
 
-    // Esc closes only the popup: a pinned panel stays until its close button
-    private func cancel() {
+    /// Hides the popup; a pinned panel stays until its close button (Esc does the same).
+    func dismissPopup() {
         guard !settings.isPinned else {
             return
         }

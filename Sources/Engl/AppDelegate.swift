@@ -8,9 +8,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var environment: AppEnvironment?
     private var statusItem: StatusItemController?
     private var panel: PanelController?
+    private var settingsWindow: SettingsWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        NSApp.mainMenu = MainMenu.make()
         let environment = AppEnvironment()
         self.environment = environment
         let panel = PanelController(
@@ -47,19 +49,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func openSettings() {
-        logger.info("settings requested")
+        settingsWindowController()?.show()
     }
 
-    // the settings window (Task 13) takes over open settings and the pack download
     private func perform(_ action: ErrorAction) {
         switch action {
         case .openSettings:
+            panel?.dismissPopup()
             openSettings()
         case .downloadLanguagePack:
-            SystemSettingsLink.translationLanguages.open()
+            panel?.dismissPopup()
+            settingsWindowController()?.showAndDownloadLanguagePack()
         case .allowPasteboardAccess:
             SystemSettingsLink.pasteAccess.open()
         }
+    }
+
+    // created on first use: the window reads the key from Keychain only when opened
+    private func settingsWindowController() -> SettingsWindowController? {
+        if let settingsWindow {
+            return settingsWindow
+        }
+        guard let environment else {
+            return nil
+        }
+        let model = SettingsModel(
+            keyStore: environment.keyStore,
+            keyCheck: environment.keyCheck,
+            pasteboard: environment.pasteboard,
+            textTranslator: SystemTextTranslator()
+        )
+        let controller = SettingsWindowController(
+            model: model,
+            settings: environment.settings,
+            onDoubleCopyChange: { [weak self] in
+                self?.applyDoubleCopySettings()
+            }
+        )
+        settingsWindow = controller
+        return controller
     }
 
     private func applyDoubleCopySettings() {
