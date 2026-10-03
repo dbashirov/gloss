@@ -318,12 +318,12 @@ protocol TranslationProvider: Sendable {
 - Create: `Tests/EnglCoreTests/TextNormalizerTests.swift`
 - Delete: `Sources/EnglCore/EnglCore.swift`, `Tests/EnglCoreTests/SmokeTests.swift`
 
-- [ ] описать модели из Technical Details и `ProviderError`
-- [ ] реализовать `TextNormalizer.normalize(_:) -> String?`: trim, схлопывание пробелов
+- [x] описать модели из Technical Details и `ProviderError`
+- [x] реализовать `TextNormalizer.normalize(_:) -> String?`: trim, схлопывание пробелов
   и переводов строк, обрезка до 5000 символов, `nil` для пустой строки
-- [ ] написать тесты нормализации (обычный текст, многострочный, пробелы/табы)
-- [ ] написать тесты граничных случаев (пустая строка, только пробелы, >5000 символов)
-- [ ] run tests - must pass before next task
+- [x] написать тесты нормализации (обычный текст, многострочный, пробелы/табы)
+- [x] написать тесты граничных случаев (пустая строка, только пробелы, >5000 символов)
+- [x] run tests - must pass before next task
 
 ### Task 3: Классификатор запроса (язык и тип)
 
