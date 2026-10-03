@@ -365,17 +365,19 @@ protocol TranslationProvider: Sendable {
 - Create: `Sources/EnglCore/SecretStore.swift`
 - Create: `Sources/EnglCore/KeychainSecretStore.swift`
 - Create: `Tests/EnglCoreTests/KeychainSecretStoreTests.swift`
+- Create: `Tests/EnglCoreTests/InMemorySecretStoreTests.swift`
+- Create: `Tests/EnglCoreTests/Helpers/UUIDv7.swift`, `Tests/EnglCoreTests/UUIDv7Tests.swift`
 
-- [ ] `protocol SecretStore: Sendable { func read(_ account: String) throws -> String?;
+- [x] `protocol SecretStore: Sendable { func read(_ account: String) throws -> String?;
   func write(_ value: String?, account: String) throws }`
-- [ ] `KeychainSecretStore` на `SecItemCopyMatching`/`SecItemAdd`/`SecItemUpdate`/`SecItemDelete`
+- [x] `KeychainSecretStore` на `SecItemCopyMatching`/`SecItemAdd`/`SecItemUpdate`/`SecItemDelete`
   с понятной ошибкой по `OSStatus`
-- [ ] `InMemorySecretStore` (`Sendable` через `Mutex` из `Synchronization`) для тестов и превью
-- [ ] написать тесты round-trip для Keychain с уникальным `service` на прогон
+- [x] `InMemorySecretStore` (`Sendable` через `Mutex` из `Synchronization`) для тестов и превью
+- [x] написать тесты round-trip для Keychain с уникальным `service` на прогон
   (`com.dbashirov.engl.tests.<UUIDv7>`) и удалением в `defer`: запись, чтение, обновление,
   удаление, чтение отсутствующего
-- [ ] написать тесты `InMemorySecretStore`
-- [ ] run tests - must pass before next task
+- [x] написать тесты `InMemorySecretStore`
+- [x] run tests - must pass before next task
 
 ### Task 6: HTTP-клиент и YandexDictionaryProvider
 
