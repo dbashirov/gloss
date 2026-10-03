@@ -1,6 +1,7 @@
 import AppKit
-import EnglCore
 
 let app = NSApplication.shared
-app.setActivationPolicy(.accessory)
+// NSApplication keeps its delegate weakly
+let delegate = AppDelegate()
+app.delegate = delegate
 app.run()

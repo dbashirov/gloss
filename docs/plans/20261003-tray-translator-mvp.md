@@ -487,20 +487,23 @@ add-generic-password` до появления окна настроек в Task 
 - Create: `scripts/build-app.sh`
 - Modify: `Makefile`
 
-- [ ] `SystemPasteboard`: адаптер `PasteboardReading` над `NSPasteboard.general`
+- [x] `SystemPasteboard`: адаптер `PasteboardReading` над `NSPasteboard.general`
   + `accessBehavior`
-- [ ] `AppEnvironment`: сборка зависимостей (Keychain, провайдеры Yandex → Apple, Router,
+- [x] `AppEnvironment`: сборка зависимостей (Keychain, провайдеры Yandex → Apple, Router,
   `TranslationController`, `ClipboardWatcher`, `AppSettings`)
-- [ ] `AppDelegate`: `.accessory` activation policy, запуск watcher по настройке,
+- [x] `AppDelegate`: `.accessory` activation policy, запуск watcher по настройке,
   связка `onDoubleCopy` → `TranslationController.translate`
-- [ ] `StatusItemController`: иконка (SF Symbol `character.book.closed`), левый клик →
+- [x] `StatusItemController`: иконка (SF Symbol `character.book.closed`), левый клик →
   окно ручного ввода (пока лог), правый клик → меню «Двойной Cmd+C ✓», «Настройки…», «Выход»
-- [ ] `Info.plist` с полным набором ключей, `scripts/build-app.sh` (`--show-bin-path`,
+- [x] `Info.plist` с полным набором ключей, `scripts/build-app.sh` (`--show-bin-path`,
   упаковка, `codesign` с `CODESIGN_IDENTITY` или ad-hoc), цели `app`, `run`, `install`
-- [ ] проверить вручную: `make run` → иконка в трее, нет иконки в Dock, при первом двойном
+- [x] проверить вручную: `make run` → иконка в трее, нет иконки в Dock, при первом двойном
   Cmd+C — системный запрос доступа к буферу, после разрешения результат перевода в логе
-- [ ] тесты: новой логики в `EnglCore` нет; убедиться, что все тесты проходят (`make test`)
-- [ ] run tests - must pass before next task
+  (skipped - not automatable, needs user; автоматически проверено: структура бандла,
+  `codesign --verify --strict`, `plutil -lint`, `open build/Engl.app` → процесс запущен,
+  затем остановлен)
+- [x] тесты: новой логики в `EnglCore` нет; убедиться, что все тесты проходят (`make test`)
+- [x] run tests - must pass before next task
 
 ### Task 11: Плавающая панель: попап и закрепление
 
