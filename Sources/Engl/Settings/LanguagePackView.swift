@@ -15,9 +15,9 @@ struct LanguagePackView: View {
                     Button("Скачать") {
                         model.downloadPack()
                     }
-                    .disabled(model.isDownloadingPack)
+                    .disabled(model.packDownload.isActive)
                 }
-                if model.isDownloadingPack {
+                if model.packDownload.isActive {
                     ProgressView()
                         .controlSize(.small)
                 }
@@ -29,7 +29,10 @@ struct LanguagePackView: View {
             }
             SettingsNoteView(note: model.packNote)
         }
-        .translationTask(model.packConfiguration, action: prepare(requestID: model.packRequestID))
+        .translationTask(
+            model.packDownload.configuration,
+            action: prepare(requestID: model.packDownload.requestID)
+        )
     }
 
     // nonisolated: the session is not Sendable and must stay off the main actor

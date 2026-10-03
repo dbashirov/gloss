@@ -33,9 +33,9 @@ Always use `make`, never raw `swift test`:
 - `Sources/EnglCore/` — models (incl. `Language` codes), `TextNormalizer`, `QueryClassifier`,
   `Router`, `TranslationController`, `AppSettings`, `AppIdentity` (bundle ID, log subsystem,
   Keychain service), `PopupGeometry`, secrets/Keychain, `YandexKey{Store,Check,Settings}`,
-  `SettingsNote`, presentation helpers (`ProviderError+Message`, `ResultPresentation`);
-  `Providers/` (Yandex, Apple), `Clipboard/` (`ClipboardWatcher`, `DoubleCopyDetector`,
-  `PasteboardReading`, `PasteAccess`).
+  `SettingsNote`, `LanguagePack{State,Download}`, presentation helpers
+  (`ProviderError+Message`, `ResultPresentation`); `Providers/` (Yandex, Apple), `Clipboard/`
+  (`ClipboardWatcher`, `DoubleCopyDetector`, `PasteboardReading`, `PasteAccess`).
 - `Sources/Engl/` — `AppDelegate`, `AppEnvironment`, `MainMenu`, `StatusItemController`,
   `SystemPasteboard`; `Panel/` (`TranslatorPanel`, `PanelController`), `Views/` (panel SwiftUI),
   `Settings/` (settings window).

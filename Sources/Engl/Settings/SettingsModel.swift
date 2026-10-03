@@ -2,7 +2,6 @@ import EnglCore
 import Foundation
 import Observation
 import ServiceManagement
-import Translation
 
 /// SettingsModel holds the settings window state that does not live in `AppSettings`:
 /// the Yandex key, the login item, paste access and the language pack.
@@ -14,10 +13,7 @@ final class SettingsModel {
     private(set) var pasteAccess = PasteAccess.ask
     private(set) var packState: LanguagePackState?
     private(set) var packNote: SettingsNote?
-    private(set) var isDownloadingPack = false
-    private(set) var packConfiguration: TranslationSession.Configuration?
-    /// Identifies the latest download: a cancelled one may finish after a newer one started.
-    private(set) var packRequestID = 0
+    private(set) var packDownload = LanguagePackDownload()
 
     /// Brings the settings window forward: the download dialog needs an active key window.
     @ObservationIgnored var activateWindow: () -> Void = {}
@@ -72,21 +68,14 @@ final class SettingsModel {
     func downloadPack() {
         activateWindow()
         packNote = nil
-        isDownloadingPack = true
-        packRequestID += 1
-        packConfiguration = TranslationSession.Configuration(
-            source: Language.en.locale,
-            target: Language.ru.locale
-        )
+        packDownload.start()
     }
 
     func packDownloadFinished(requestID: Int, failure: String?) async {
-        guard requestID == packRequestID else {
+        // the task also runs on every appearance while a download is active
+        guard packDownload.finish(requestID: requestID) else {
             return
         }
-        // the task also runs on every appearance while a configuration is set
-        packConfiguration = nil
-        isDownloadingPack = false
         if let failure {
             packNote = .failure("Пакет не скачан: \(failure)")
         }
