@@ -54,6 +54,11 @@ public final class YandexKeySettings {
         isLoaded || !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    /// `false` while the stored key is being read: the draft is not the key yet.
+    public var canCheck: Bool {
+        !isLoading && !isChecking
+    }
+
     /// Drops the state of the previous visit and reads the stored key into the draft
     /// off the main actor. What the user types meanwhile is kept; a save still in flight
     /// replaces the value read here when it finishes.
@@ -114,7 +119,11 @@ public final class YandexKeySettings {
     }
 
     /// Checks the draft with a real request without saving it.
+    /// Does nothing while the stored key is being read.
     public func check() {
+        guard !isLoading else {
+            return
+        }
         dropCheck()
         let key = draft
         note = nil

@@ -394,6 +394,39 @@ struct YandexKeySettingsTests {
         #expect(settings.note == .success("Ключ сохранён"))
     }
 
+    @Test func checkWaitsForStoredKey() async throws {
+        let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
+        let release = DispatchSemaphore(value: 0)
+        let secrets = FakeSecretStore([account: "stored"], afterRead: { _ in
+            enteredContinuation.yield()
+            release.wait()
+        })
+        let http = FakeHTTPClient(status: 200, body: try fixture("yandex_run"))
+        let settings = makeSettings(secrets: secrets, http: http)
+        #expect(settings.canCheck)
+        settings.load()
+        for await _ in entered {
+            break
+        }
+
+        #expect(!settings.canCheck)
+        settings.check()
+        #expect(settings.checkTask == nil)
+        #expect(!settings.isChecking)
+        release.signal()
+        await settings.loadTask?.value
+
+        #expect(settings.draft == "stored")
+        #expect(settings.note == nil)
+        #expect(settings.canCheck)
+        settings.check()
+        #expect(!settings.canCheck)
+        await settings.checkTask?.value
+        #expect(settings.note == .success("Ключ действителен"))
+        #expect(http.urls.count == 1)
+        #expect(http.urls.first?.query()?.contains("key=stored") == true)
+    }
+
     @Test func editDropsCheckInFlight() async throws {
         let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
         let gate = Gate()
