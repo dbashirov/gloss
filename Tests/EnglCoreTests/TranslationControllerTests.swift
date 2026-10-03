@@ -17,6 +17,7 @@ private func makeController(_ providers: [any TranslationProvider]) -> Translati
 }
 
 @MainActor
+@Suite(.timeLimit(.minutes(1)))
 struct TranslationControllerTests {
     @Test func startsIdle() {
         let controller = makeController([FakeProvider(id: "yandex", result: runCard)])
@@ -29,11 +30,11 @@ struct TranslationControllerTests {
         let controller = makeController([provider])
 
         controller.translate("  run\n")
-        #expect(controller.state == .loading(runQuery))
+        #expect(controller.state == .loading)
         await controller.pending?.value
 
         #expect(controller.state == .result(RoutedResult(providerID: "yandex", result: runCard)))
-        #expect(provider.calls == 1)
+        #expect(provider.queries == [runQuery])
     }
 
     @Test func classifiesNormalizedSentence() async {
@@ -41,19 +42,19 @@ struct TranslationControllerTests {
         let controller = makeController([provider])
 
         controller.translate("Я   иду\tдомой.")
+        await controller.pending?.value
 
         let expected = Query(text: "Я иду домой.", source: .ru, target: .en, kind: .sentence)
-        #expect(controller.state == .loading(expected))
-        await controller.pending?.value
+        #expect(provider.queries == [expected])
     }
 
-    @Test func publishesFailureWithNormalizedText() async {
+    @Test func publishesFailure() async {
         let controller = makeController([FakeProvider(id: "yandex", error: ProviderError.invalidKey)])
 
         controller.translate(" run  ")
         await controller.pending?.value
 
-        #expect(controller.state == .failed(text: "run", error: .invalidKey))
+        #expect(controller.state == .failed(.invalidKey))
     }
 
     @Test func mapsUnexpectedErrorToInvalidResponse() async {
@@ -62,7 +63,7 @@ struct TranslationControllerTests {
         controller.translate("run")
         await controller.pending?.value
 
-        #expect(controller.state == .failed(text: "run", error: .invalidResponse))
+        #expect(controller.state == .failed(.invalidResponse))
     }
 
     @Test(arguments: ["", "   ", "\n\t "])
@@ -99,26 +100,24 @@ struct TranslationControllerTests {
         #expect(controller.state == .result(RoutedResult(providerID: "yandex", result: runCard)))
     }
 
-    @Test func cancellationErrorKeepsState() async {
+    @Test func cancellationErrorOfRequestNobodyCancelledFails() async {
         let controller = makeController([FakeProvider(id: "yandex", error: CancellationError())])
 
         controller.translate("run")
         await controller.pending?.value
 
-        #expect(controller.state == .loading(runQuery))
+        #expect(controller.state == .failed(.invalidResponse))
     }
 
     @Test func secondRequestCancelsFirst() async {
         let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
-        let (gate, gateContinuation) = AsyncStream.makeStream(of: Void.self)
+        let gate = Gate()
         let provider = FakeProvider(id: "yandex") { query in
             guard query.text == "run" else {
                 return walkText
             }
             enteredContinuation.yield()
-            for await _ in gate {
-                break
-            }
+            await gate.wait()
             return runCard
         }
         let controller = makeController([provider])
@@ -130,7 +129,7 @@ struct TranslationControllerTests {
         }
         controller.translate("walk")
         await controller.pending?.value
-        gateContinuation.yield()
+        gate.open()
         await first?.value
 
         #expect(controller.state == .result(RoutedResult(providerID: "yandex", result: walkText)))
@@ -139,19 +138,15 @@ struct TranslationControllerTests {
 
     @Test func cancelledRequestFailureIsDropped() async {
         let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
-        let (gate, gateContinuation) = AsyncStream.makeStream(of: Void.self)
-        let (finished, finishedContinuation) = AsyncStream.makeStream(of: Void.self)
+        let firstGate = Gate()
+        let secondGate = Gate()
         let provider = FakeProvider(id: "yandex") { query in
             guard query.text == "run" else {
-                for await _ in finished {
-                    break
-                }
+                await secondGate.wait()
                 return walkText
             }
             enteredContinuation.yield()
-            for await _ in gate {
-                break
-            }
+            await firstGate.wait()
             throw ProviderError.network
         }
         let controller = makeController([provider])
@@ -162,14 +157,13 @@ struct TranslationControllerTests {
             break
         }
         controller.translate("walk")
-        gateContinuation.yield()
+        firstGate.open()
         await first?.value
 
-        #expect(controller.state == .loading(Query(
-            text: "walk", source: .en, target: .ru, kind: .dictionary
-        )))
-        finishedContinuation.yield()
+        #expect(controller.state == .loading)
+        secondGate.open()
         await controller.pending?.value
+        #expect(controller.state == .result(RoutedResult(providerID: "yandex", result: walkText)))
     }
 
     @Test func resetCancelsRequestAndReturnsToIdle() async {
@@ -191,5 +185,27 @@ struct TranslationControllerTests {
 
         #expect(controller.state == .idle)
         #expect(controller.pending == nil)
+    }
+
+    @Test func resultArrivingAfterResetIsDropped() async {
+        let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
+        let gate = Gate()
+        let provider = FakeProvider(id: "yandex") { _ in
+            enteredContinuation.yield()
+            await gate.wait()
+            return runCard
+        }
+        let controller = makeController([provider])
+        controller.translate("run")
+        let pending = controller.pending
+        for await _ in entered {
+            break
+        }
+
+        controller.reset()
+        gate.open()
+        await pending?.value
+
+        #expect(controller.state == .idle)
     }
 }

@@ -19,7 +19,7 @@ struct SettingsView: View {
                 pasteAccess
             }
             Section("Словари") {
-                yandexKey
+                YandexKeyView(key: model.key)
             }
             Section("Языковой пакет") {
                 LanguagePackView(model: model)
@@ -88,33 +88,38 @@ struct SettingsView: View {
         }
     }
 
-    @ViewBuilder
-    private var yandexKey: some View {
-        SecureField("Ключ API Яндекс.Словаря", text: $model.keyDraft)
-            .onSubmit { model.saveKey() }
+    private var intervalMilliseconds: Binding<Double> {
+        Binding(
+            get: { settings.doubleCopyInterval * 1000 },
+            set: { settings.doubleCopyInterval = $0 / 1000 }
+        )
+    }
+}
+
+/// YandexKeyView edits, saves and checks the Yandex Dictionary API key.
+struct YandexKeyView: View {
+    @Bindable var key: YandexKeySettings
+
+    var body: some View {
+        SecureField("Ключ API Яндекс.Словаря", text: $key.draft)
+            .onSubmit { key.save() }
         HStack {
             Button("Сохранить") {
-                model.saveKey()
+                key.save()
             }
+            .disabled(!key.canSave)
             Button("Проверить") {
-                model.checkKey()
+                key.check()
             }
-            .disabled(model.isCheckingKey)
-            if model.isCheckingKey {
+            .disabled(key.isChecking)
+            if key.isChecking {
                 ProgressView()
                     .controlSize(.small)
             }
             Spacer()
             Link("Получить бесплатный ключ", destination: SettingsModel.keyURL)
         }
-        SettingsNoteView(note: model.keyNote)
-    }
-
-    private var intervalMilliseconds: Binding<Double> {
-        Binding(
-            get: { settings.doubleCopyInterval * 1000 },
-            set: { settings.doubleCopyInterval = $0 / 1000 }
-        )
+        SettingsNoteView(note: key.note)
     }
 }
 

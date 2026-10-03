@@ -4,11 +4,7 @@ import EnglCore
 /// SystemPasteboard adapts `NSPasteboard.general` to `PasteboardReading`.
 @MainActor
 final class SystemPasteboard: PasteboardReading {
-    private let pasteboard: NSPasteboard
-
-    init(pasteboard: NSPasteboard = .general) {
-        self.pasteboard = pasteboard
-    }
+    private let pasteboard = NSPasteboard.general
 
     var changeCount: Int {
         pasteboard.changeCount

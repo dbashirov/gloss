@@ -18,6 +18,7 @@ private func removeAllItems(of store: KeychainSecretStore) {
     SecItemDelete(query as CFDictionary)
 }
 
+@Suite(.tags(.keychain))
 struct KeychainSecretStoreTests {
     @Test func readsMissingAccountAsNil() throws {
         let store = makeStore()
@@ -88,6 +89,22 @@ struct KeychainSecretStoreTests {
         try store.write("mine", account: account)
 
         #expect(try other.read(account) == nil)
+    }
+
+    @Test func rejectsValueThatIsNotUTF8() throws {
+        let store = makeStore()
+        defer { removeAllItems(of: store) }
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: store.service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: Data([0xFF, 0xFE, 0xFD]),
+        ]
+        #expect(SecItemAdd(query as CFDictionary, nil) == errSecSuccess)
+
+        #expect(throws: KeychainError.invalidData) {
+            try store.read(account)
+        }
     }
 
     @Test func usesAppServiceByDefault() {

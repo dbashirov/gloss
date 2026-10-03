@@ -3,7 +3,7 @@ import EnglCore
 
 /// PanelController shows the translator panel either as a popup at the cursor, closed by
 /// Esc, an outside click or another app's activation, or pinned at a saved position
-/// and closed only by its close button.
+/// and closed only by its close button or Cmd+W.
 @MainActor
 final class PanelController: NSObject, NSWindowDelegate {
     static let width: CGFloat = 380
@@ -59,12 +59,16 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.onCancel = { [weak self] in
             self?.dismissPopup()
         }
+        panel.onClose = { [weak self] in
+            self?.hide()
+        }
     }
 
     /// Starts translating the text and shows the panel with it as the query.
     func showTranslation(of text: String) {
         translator.translate(text)
-        model.query = text
+        // the raw copy may be megabytes with line breaks: the field gets what is translated
+        model.query = TextNormalizer.normalize(text) ?? ""
         show()
     }
 
@@ -84,7 +88,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     func togglePin() {
         settings.isPinned.toggle()
         if settings.isPinned {
-            settings.pinnedOrigin = panel.frame.origin
+            settings.pinnedTopLeft = PopupGeometry.topLeft(of: panel.frame)
         }
         updateMonitors()
     }
@@ -97,17 +101,18 @@ final class PanelController: NSObject, NSWindowDelegate {
         watcher.ignore(changeCount: pasteboard.write(text))
     }
 
+    // only a drag by the user moves the saved position: own placements may be clamped
     func windowDidMove(_ notification: Notification) {
-        let isOwnPlacement = panel.frame.origin == placedFrame?.origin
-        if !isOwnPlacement {
-            popupCursor = nil
+        if let placedFrame, PopupGeometry.isSamePosition(panel.frame.origin, placedFrame.origin) {
+            return
         }
+        popupCursor = nil
         if settings.isPinned {
-            settings.pinnedOrigin = panel.frame.origin
+            settings.pinnedTopLeft = PopupGeometry.topLeft(of: panel.frame)
         }
     }
 
-    /// Hides the popup; a pinned panel stays until its close button (Esc does the same).
+    /// Hides the popup; a pinned panel stays until its close button or Cmd+W.
     func dismissPopup() {
         guard !settings.isPinned else {
             return
@@ -126,15 +131,16 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     private func savedOrigin(for size: CGSize) -> CGPoint? {
-        guard settings.isPinned, let saved = settings.pinnedOrigin else {
+        guard settings.isPinned, let topLeft = settings.pinnedTopLeft else {
             return nil
         }
         popupCursor = nil
         // the monitor the panel was pinned on may be gone
-        guard let visibleFrame = visibleFrame(near: saved) else {
-            return saved
-        }
-        return PopupGeometry.clamp(origin: saved, size: size, visibleFrame: visibleFrame)
+        return PopupGeometry.origin(
+            topLeft: topLeft,
+            size: size,
+            visibleFrame: visibleFrame(near: topLeft)
+        )
     }
 
     private func popupOrigin(for size: CGSize) -> CGPoint {

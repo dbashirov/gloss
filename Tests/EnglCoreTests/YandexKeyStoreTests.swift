@@ -4,18 +4,6 @@ import Testing
 private let word = Query(text: "run", source: .en, target: .ru, kind: .dictionary)
 private let text = TranslationResult.text(TextTranslation(source: "run", translation: "бежать"))
 
-private struct FailingSecretStore: SecretStore {
-    struct Failure: Error {}
-
-    func read(_ account: String) throws -> String? {
-        throw Failure()
-    }
-
-    func write(_ value: String?, account: String) throws {
-        throw Failure()
-    }
-}
-
 struct YandexKeyStoreTests {
     @Test func loadsStoredKey() throws {
         let secrets = InMemorySecretStore([YandexDictionaryProvider.keyAccount: "stored"])
@@ -66,10 +54,10 @@ struct YandexKeyStoreTests {
     @Test func failedSaveKeepsRouterCache() async throws {
         let provider = FakeProvider(id: "yandex", result: text)
         let router = Router(providers: [provider])
-        let store = YandexKeyStore(secrets: FailingSecretStore(), router: router)
+        let store = YandexKeyStore(secrets: FakeSecretStore.broken(), router: router)
         _ = try await router.route(word)
 
-        await #expect(throws: FailingSecretStore.Failure.self) {
+        await #expect(throws: FakeSecretStore.Failure.self) {
             try await store.save("new-key")
         }
         _ = try await router.route(word)
@@ -78,9 +66,9 @@ struct YandexKeyStoreTests {
     }
 
     @Test func loadReportsUnreadableKey() {
-        let store = YandexKeyStore(secrets: FailingSecretStore(), router: Router(providers: []))
+        let store = YandexKeyStore(secrets: FakeSecretStore.broken(), router: Router(providers: []))
 
-        #expect(throws: FailingSecretStore.Failure.self) {
+        #expect(throws: FakeSecretStore.Failure.self) {
             try store.load()
         }
     }

@@ -56,6 +56,13 @@ struct TextNormalizerTests {
         #expect(result.count == TextNormalizer.maxLength)
     }
 
+    @Test func capsHugeMultilineText() throws {
+        let input = String(repeating: "lines of copied text\n\n", count: 500_000)
+        let result = try #require(TextNormalizer.normalize(input))
+        #expect(result.count == TextNormalizer.maxLength)
+        #expect(!result.contains("\n"))
+    }
+
     @Test func truncatesAfterCollapsing() throws {
         let padding = String(repeating: " ", count: 10_000)
         let result = try #require(TextNormalizer.normalize(padding + "word" + padding))

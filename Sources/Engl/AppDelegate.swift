@@ -55,14 +55,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         environment?.watcher.stop()
     }
 
+    // the popup floats above other windows: it would cover the settings
     private func openSettings() {
+        panel?.dismissPopup()
         settingsWindowController()?.show()
     }
 
     private func perform(_ action: ErrorAction) {
         switch action {
         case .openSettings:
-            panel?.dismissPopup()
             openSettings()
         case .downloadLanguagePack:
             panel?.dismissPopup()
@@ -81,8 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return nil
         }
         let model = SettingsModel(
-            keyStore: environment.keyStore,
-            keyCheck: environment.keyCheck,
+            key: YandexKeySettings(store: environment.keyStore, keyCheck: environment.keyCheck),
             pasteboard: environment.pasteboard,
             textTranslator: SystemTextTranslator()
         )

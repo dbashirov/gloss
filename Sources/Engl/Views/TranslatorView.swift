@@ -3,8 +3,7 @@ import SwiftUI
 
 /// TranslatorView is the panel content: the query field and the translation state.
 struct TranslatorView: View {
-    // header, query field, footer and paddings take the rest of the panel height
-    static let maxResultHeight = PanelController.maxHeight - 150
+    static let pasteAccessMessage = "Доступ к буферу обмена запрещён — двойной Cmd+C не работает"
 
     @Bindable var model: PanelModel
     let translator: TranslationController
@@ -15,8 +14,12 @@ struct TranslatorView: View {
     @FocusState private var isQueryFocused: Bool
     // the @State macro needs SwiftUIMacros, which Command Line Tools lack
     private let resultHeight = State(initialValue: CGFloat(0))
+    // everything but the result area: header, field, notices, footer and paddings
+    private let chromeHeight = State(initialValue: CGFloat(150))
 
     var body: some View {
+        let resultLimit = PanelController.maxHeight - chromeHeight.wrappedValue
+        let scrollHeight = max(min(resultHeight.wrappedValue, resultLimit), 0)
         VStack(alignment: .leading, spacing: 10) {
             HeaderView(
                 isPinned: settings.isPinned,
@@ -29,8 +32,8 @@ struct TranslatorView: View {
                 .onSubmit { translator.translate(model.query) }
             if model.isPasteAccessDenied {
                 NoticeView(
-                    message: PasteboardAccessHint.message,
-                    action: PasteboardAccessHint.action,
+                    message: Self.pasteAccessMessage,
+                    action: .allowPasteboardAccess,
                     perform: actions.perform
                 )
             }
@@ -43,9 +46,17 @@ struct TranslatorView: View {
                         resultHeight.wrappedValue = height
                     }
             }
-            .frame(height: min(resultHeight.wrappedValue, Self.maxResultHeight))
+            .frame(height: scrollHeight)
             .scrollBounceBehavior(.basedOnSize)
             if case .result(let routed) = translator.state {
+                if let notice = routed.fallbackNotice {
+                    NoticeView(
+                        message: notice.message,
+                        action: notice.action,
+                        perform: actions.perform
+                    )
+                    .font(.caption)
+                }
                 Divider()
                 FooterView(providerID: routed.providerID) {
                     actions.copy(routed.result.copyText)
@@ -53,7 +64,17 @@ struct TranslatorView: View {
             }
         }
         .padding(12)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.height
+        } action: { height in
+            let chrome = height - scrollHeight
+            if abs(chrome - chromeHeight.wrappedValue) > 0.5 {
+                chromeHeight.wrappedValue = chrome
+            }
+        }
         .frame(width: PanelController.width, alignment: .leading)
+        // keeps the header with its buttons visible while the height settles
+        .frame(maxHeight: PanelController.maxHeight, alignment: .top)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
         .onChange(of: model.focusRequest) {
             isQueryFocused = true
@@ -83,7 +104,7 @@ struct TranslatorView: View {
             case .text(let translation):
                 TextResultView(translation: translation)
             }
-        case .failed(_, let error):
+        case .failed(let error):
             NoticeView(message: error.message, action: error.action, perform: actions.perform)
         }
     }

@@ -32,7 +32,6 @@ struct YandexDefinition: Decodable {
 
 struct YandexTranslation: Decodable {
     let text: String
-    let pos: String?
     let syn: [YandexText]?
     let mean: [YandexText]?
     let ex: [YandexExample]?
@@ -71,7 +70,6 @@ struct YandexExample: Decodable {
 /// Error body, e.g. `{"code": 401, "message": "API key is invalid"}`.
 struct YandexErrorResponse: Decodable {
     let code: Int
-    let message: String?
 }
 
 private extension String {

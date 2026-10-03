@@ -96,8 +96,12 @@ public struct YandexDictionaryProvider: TranslationProvider {
     }
 
     private func apiKey() throws -> String {
-        // an unreadable keychain item is treated the same as a missing key
-        let stored = try? secrets.read(Self.keyAccount)
+        let stored: String?
+        do {
+            stored = try secrets.read(Self.keyAccount)
+        } catch {
+            throw ProviderError.keyUnavailable
+        }
         let key = stored?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !key.isEmpty else {
             throw ProviderError.notConfigured

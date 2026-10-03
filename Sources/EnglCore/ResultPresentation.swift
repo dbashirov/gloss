@@ -22,6 +22,19 @@ public struct ProviderInfo: Sendable, Equatable {
     }
 }
 
+extension RoutedResult {
+    /// The failure of the preferred provider the user should fix, shown next to
+    /// the fallback answer; a missing key or an unknown word is not worth it.
+    public var fallbackNotice: ProviderError? {
+        switch fallbackError {
+        case .invalidKey, .rateLimited, .keyUnavailable:
+            fallbackError
+        default:
+            nil
+        }
+    }
+}
+
 extension TranslationResult {
     /// The text the copy button puts on the pasteboard: all distinct dictionary
     /// translations or the translated text.

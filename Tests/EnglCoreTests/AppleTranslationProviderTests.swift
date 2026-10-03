@@ -36,6 +36,17 @@ struct AppleTranslationProviderTests {
         #expect(result == .text(TextTranslation(source: "бежать", translation: "run")))
     }
 
+    @Test(arguments: [hello, word])
+    func usesQueryDirection(query: Query) async throws {
+        let translator = FakeTextTranslator(translation: "")
+
+        _ = try await AppleTranslationProvider(translator: translator).translate(query)
+
+        let direction = FakeTextTranslator.Direction(source: query.source, target: query.target)
+        #expect(translator.statusDirections == [direction])
+        #expect(translator.translateDirections == [direction])
+    }
+
     @Test func throwsLanguagePackMissingWhenPackIsNotDownloaded() async {
         let translator = FakeTextTranslator(status: .supported, translation: "")
 
@@ -88,6 +99,7 @@ struct AppleTranslationProviderTests {
     }
 }
 
+@Suite(.timeLimit(.minutes(1)))
 struct AppleTranslationProviderCancellationTests {
     @Test(arguments: [
         TranslationError.alreadyCancelled,
@@ -106,9 +118,12 @@ struct AppleTranslationProviderCancellationTests {
             withUnsafeCurrentTask { $0?.cancel() }
             throw TranslationError.internalError
         }
+        let provider = AppleTranslationProvider(translator: translator)
+        // cancels its own task, not the one running the test
+        let task = Task { try await provider.translate(hello) }
 
         await #expect(throws: CancellationError.self) {
-            try await AppleTranslationProvider(translator: translator).translate(hello)
+            try await task.value
         }
     }
 

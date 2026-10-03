@@ -33,13 +33,15 @@ extension ProviderError {
             "Сервис перевода вернул некорректный ответ, попробуйте позже"
         case .languagePackMissing:
             "Не установлен языковой пакет английский ↔ русский"
+        case .keyUnavailable:
+            "Нет доступа к ключу Яндекс.Словаря в Связке ключей"
         }
     }
 
     /// `nil` when the user can only retry later or change the query.
     public var action: ErrorAction? {
         switch self {
-        case .notConfigured, .invalidKey:
+        case .notConfigured, .invalidKey, .keyUnavailable:
             .openSettings
         case .languagePackMissing:
             .downloadLanguagePack
@@ -47,11 +49,4 @@ extension ProviderError {
             nil
         }
     }
-}
-
-/// PasteboardAccessHint is shown while paste access is denied in Privacy & Security:
-/// double Cmd+C cannot read the copied text then.
-public enum PasteboardAccessHint {
-    public static let message = "Доступ к буферу обмена запрещён — двойной Cmd+C не работает"
-    public static let action = ErrorAction.allowPasteboardAccess
 }

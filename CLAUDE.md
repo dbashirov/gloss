@@ -11,7 +11,10 @@ Always use `make`, never raw `swift test`:
 - `make coverage` — tests + `llvm-cov` report for `Sources/EnglCore`
 - `make app` — release `.app` in `build/Engl.app` (`scripts/build-app.sh`), signed with
   `CODESIGN_IDENTITY` or ad-hoc
-- `make run` / `make install` — build and open / copy to `/Applications`
+- `make run` / `make install` — build and open / copy to `/Applications`. `make run` does not
+  restart a running instance (`open` just activates it): quit Engl first (`pkill -x Engl`)
+  before verifying a rebuild. Never run `make install` or register login items unasked.
+- `make clean` — `swift package clean` + `rm -rf build`
 
 ## Toolchain constraints (Command Line Tools only, no Xcode)
 
@@ -25,6 +28,19 @@ Always use `make`, never raw `swift test`:
 - Bin path: `swift build --show-bin-path`, never hardcode `.build/release`.
 - The `Engl` target has no resources (generated `Bundle.module` crashes inside `.app`).
 
+## Layout
+
+- `Sources/EnglCore/` — models, `TextNormalizer`, `QueryClassifier`, `Router`,
+  `TranslationController`, `AppSettings`, `PopupGeometry`, secrets/Keychain,
+  `YandexKey{Store,Check,Settings}`, presentation helpers (`ProviderError+Message`,
+  `ResultPresentation`); `Providers/` (Yandex, Apple), `Clipboard/` (`ClipboardWatcher`,
+  `DoubleCopyDetector`, `PasteboardReading`).
+- `Sources/Engl/` — `AppDelegate`, `AppEnvironment`, `MainMenu`, `StatusItemController`,
+  `SystemPasteboard`; `Panel/` (`TranslatorPanel`, `PanelController`), `Views/` (panel SwiftUI),
+  `Settings/` (settings window).
+- `Tests/EnglCoreTests/` — suites per type; `Fakes/`, `Helpers/` (`fixture(_:)`, `Gate`,
+  `StubURLProtocol`, tags, `UUID.v7()`), `Fixtures/` (Yandex JSON).
+
 ## Module rules
 
 - `EnglCore` (library): all logic, no AppKit/SwiftUI imports. `Engl` (executable): AppKit/SwiftUI
@@ -34,6 +50,9 @@ Always use `make`, never raw `swift test`:
   `AppEnvironment`; results go into the source-independent `DictionaryEntry`/`TextTranslation`.
   Providers map failures to `ProviderError` (so `Router` falls back) and cancellation to
   `CancellationError`. Add a footer name in `ProviderInfo.info(for:)`.
+- UI and error strings are Russian. A new `ProviderError` case needs `message`, `action`,
+  a `Router` priority and a row in `ProviderErrorMessageTests.mapsErrorToAction`
+  (`CaseIterable` tests cover the rest).
 - Platform APIs (HTTP, pasteboard, Keychain, Apple Translation, UserDefaults, clock) stay behind
   protocols/injection; fakes live in `Tests/EnglCoreTests/Fakes`.
 
@@ -41,15 +60,46 @@ Always use `make`, never raw `swift test`:
 
 - Swift Testing (`import Testing`, `@Test`, `#expect`, `#require`), `@testable import EnglCore`.
 - Every code change in `EnglCore` comes with tests; UI in `Engl` is checked manually.
-- Fakes: `FakeProvider`, `FakeHTTPClient`, `FakePasteboard`, `FakeTextTranslator`
-  (thread-safe via `Mutex` from `Synchronization`).
+- Fakes: `FakeProvider`, `FakeHTTPClient`, `FakeTextTranslator`, `FakeSecretStore` are
+  thread-safe via `Mutex` from `Synchronization`; `FakePasteboard` is `@MainActor` like
+  `PasteboardReading`.
+- Use `Gate` (ignores cancellation) to hold a fake provider; suites that wait on streams
+  carry `.timeLimit(.minutes(1))`. A test that cancels "the current task" does it inside
+  its own `Task { }`, never the test's task.
 - Yandex JSON fixtures in `Tests/EnglCoreTests/Fixtures/`, loaded via `Bundle.module`.
 - Keychain tests use a unique service `com.dbashirov.engl.tests.<UUIDv7>` and delete it in
-  `defer`; never touch the real `com.dbashirov.engl` items.
+  `defer`; never touch the real `com.dbashirov.engl` items. They are tagged `.keychain`
+  (need an unlocked login keychain).
 - `UserDefaults` tests use a unique absolute-path suite in the temp directory and remove it in
   `defer` (named suites leave plists in `~/Library/Preferences`).
-- `ClipboardWatcher` is driven by manual `tick()` (`pollInterval: nil`), no real sleeping.
-- Integration tests on real system services are gated with `.enabled(if:)`.
+- `ClipboardWatcher` logic is driven by manual `tick()` (`pollInterval: nil`); only
+  `ClipboardWatcherLoopTests` run the real 1 ms loop.
+- `URLSessionHTTPClient` is tested through `StubURLProtocol`; tests never hit the network.
+- Integration tests on real system services are gated with
+  `@Suite(.enabled("reason", asyncCondition))`.
+
+## AppKit/SwiftUI gotchas
+
+- An accessory app still needs `NSApp.mainMenu` (`MainMenu.swift`), otherwise text fields get
+  no Cmd+C/V/A and windows no Cmd+W.
+- `TranslatorPanel` is `.borderless` + `.nonactivatingPanel` with `canBecomeKey = true`; Esc is
+  caught in `sendEvent(_:)` (the field editor would take it for completion) and Cmd+W in
+  `performClose(_:)`. Dragging uses `WindowDragGesture` in `HeaderView`.
+- `PanelController` defers resizing to the next main-actor turn: the hosting view reports size
+  changes mid-layout. Own placements are told from user drags with a 1 pt tolerance.
+- The status item menu is attached only while shown; kept, it would swallow left clicks.
+- Translation framework objects are not `Sendable`: create them per call; the
+  `.translationTask` action is a `nonisolated` method; the pack download dialog needs an
+  active key window (`NSApp.activate()` first).
+- `AppSettings` uses stored properties with `didSet`: SwiftUI does not observe computed
+  properties over `UserDefaults`.
+
+## Debugging
+
+- Logs: `log stream --predicate 'subsystem == "com.dbashirov.engl"'`.
+- Yandex fixtures were written from the docs, not checked against a real response.
+- Manual UI checklist: Post-Completion in the plan (`docs/plans/`, later
+  `docs/plans/completed/`).
 
 ## Code style
 

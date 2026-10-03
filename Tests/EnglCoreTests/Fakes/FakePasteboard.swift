@@ -16,6 +16,11 @@ final class FakePasteboard: PasteboardReading {
         return text
     }
 
+    /// Sets `changeCount` directly, e.g. to a lower value after a pasteboard reset.
+    func setChangeCount(_ changeCount: Int) {
+        self.changeCount = changeCount
+    }
+
     /// Simulates a copy: replaces the contents and bumps `changeCount` by `changes`.
     func copy(_ text: String?, types: [String]? = nil, changes: Int = 1) {
         self.text = text

@@ -17,14 +17,20 @@ public protocol HTTPClient: Sendable {
 }
 
 public struct URLSessionHTTPClient: HTTPClient {
-    public static let defaultTimeout: TimeInterval = 5
+    static let timeout: TimeInterval = 5
 
     private let session: URLSession
-    private let timeout: TimeInterval
 
-    public init(session: URLSession = .shared, timeout: TimeInterval = defaultTimeout) {
+    public init(session: URLSession = makeSession()) {
         self.session = session
-        self.timeout = timeout
+    }
+
+    /// Returns a session that keeps nothing on disk: the API key travels in the URL.
+    public static func makeSession() -> URLSession {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.urlCache = nil
+        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+        return URLSession(configuration: configuration)
     }
 
     public func get(_ url: URL) async throws -> HTTPResponse {
@@ -36,7 +42,7 @@ public struct URLSessionHTTPClient: HTTPClient {
     }
 
     func request(for url: URL) -> URLRequest {
-        var request = URLRequest(url: url, timeoutInterval: timeout)
+        var request = URLRequest(url: url, timeoutInterval: Self.timeout)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         return request

@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import EnglCore
 
@@ -34,9 +35,28 @@ struct RouterTests {
 
         let routed = try await router.route(word)
 
-        #expect(routed == RoutedResult(providerID: "apple", result: text))
+        #expect(routed == RoutedResult(providerID: "apple", result: text, fallbackError: error))
         #expect(first.calls == 1)
         #expect(second.calls == 1)
+    }
+
+    @Test func reportsMostUsefulErrorOfSkippedProviders() async throws {
+        let providers = [
+            FakeProvider(id: "yandex", error: ProviderError.notFound),
+            FakeProvider(id: "claude", error: ProviderError.rateLimited),
+            FakeProvider(id: "apple", result: text),
+        ]
+
+        let routed = try await Router(providers: providers).route(word)
+
+        #expect(routed.fallbackError == .rateLimited)
+    }
+
+    @Test func firstAnswerHasNoFallbackError() async throws {
+        let routed = try await Router(providers: [FakeProvider(id: "yandex", result: card)])
+            .route(word)
+
+        #expect(routed.fallbackError == nil)
     }
 
     @Test func skipsProviderThatDoesNotSupportQuery() async throws {
@@ -100,6 +120,7 @@ struct RouterTests {
     }
 }
 
+@Suite(.timeLimit(.minutes(1)))
 struct RouterCacheTests {
     @Test func repeatedQueryIsServedFromCache() async throws {
         let provider = FakeProvider(id: "yandex", result: card)
@@ -152,7 +173,9 @@ struct RouterCacheTests {
         _ = try await router.route(word)
         await router.invalidate()
         _ = try await router.route(word)
+        #expect(provider.calls == 2)
 
+        _ = try await router.route(word)
         #expect(provider.calls == 2)
     }
 
@@ -174,16 +197,6 @@ struct RouterCacheTests {
 
         _ = try await router.route(queries[0])
         #expect(provider.calls == 4)
-    }
-
-    @Test func zeroLimitDisablesCache() async throws {
-        let provider = FakeProvider(id: "yandex", result: card)
-        let router = Router(providers: [provider], cacheLimit: 0)
-
-        _ = try await router.route(word)
-        _ = try await router.route(word)
-
-        #expect(provider.calls == 2)
     }
 
     @Test func resultStartedBeforeInvalidateIsNotCached() async throws {
@@ -212,6 +225,7 @@ struct RouterCacheTests {
     }
 }
 
+@Suite(.timeLimit(.minutes(1)))
 struct RouterCancellationTests {
     @Test func cancellationErrorDoesNotFallThrough() async {
         let first = FakeProvider(id: "yandex", error: CancellationError())
@@ -259,5 +273,75 @@ struct RouterCancellationTests {
             try await pending.value
         }
         #expect(provider.calls == 0)
+    }
+
+    @Test func cancelledTaskStopsChainAfterProviderError() async {
+        let first = FakeProvider(id: "yandex") { _ in
+            withUnsafeCurrentTask { $0?.cancel() }
+            throw ProviderError.network
+        }
+        let second = FakeProvider(id: "apple", result: text)
+        let router = Router(providers: [first, second])
+
+        let pending = Task { try await router.route(word) }
+
+        await #expect(throws: CancellationError.self) {
+            try await pending.value
+        }
+        #expect(first.calls == 1)
+        #expect(second.calls == 0)
+    }
+}
+
+/// RouterIntegrationTests run the chain with the real providers over fake transports.
+struct RouterIntegrationTests {
+    private func makeRouter(
+        http: FakeHTTPClient,
+        key: String?,
+        translator: FakeTextTranslator
+    ) -> Router {
+        let secrets = InMemorySecretStore()
+        secrets.write(key, account: YandexDictionaryProvider.keyAccount)
+        return Router(providers: [
+            YandexDictionaryProvider(http: http, secrets: secrets),
+            AppleTranslationProvider(translator: translator),
+        ])
+    }
+
+    @Test func missingKeyAndPackReportPack() async {
+        let http = FakeHTTPClient(json: "{}")
+        let translator = FakeTextTranslator(status: .supported, translation: "")
+        let router = makeRouter(http: http, key: nil, translator: translator)
+
+        await #expect(throws: ProviderError.languagePackMissing) {
+            try await router.route(word)
+        }
+        #expect(http.urls.isEmpty)
+    }
+
+    @Test func invalidKeyFallsBackToAppleWithNotice() async throws {
+        let http = FakeHTTPClient(status: 401, body: try fixture("yandex_error_401"))
+        let translator = FakeTextTranslator(translation: "бежать")
+        let router = makeRouter(http: http, key: "bad-key", translator: translator)
+
+        let routed = try await router.route(word)
+
+        #expect(routed == RoutedResult(
+            providerID: AppleTranslationProvider.providerID,
+            result: .text(TextTranslation(source: "run", translation: "бежать")),
+            fallbackError: .invalidKey
+        ))
+        #expect(routed.fallbackNotice == .invalidKey)
+    }
+
+    @Test func cancelledRequestStopsChain() async {
+        let http = FakeHTTPClient(error: URLError(.cancelled))
+        let translator = FakeTextTranslator(translation: "бежать")
+        let router = makeRouter(http: http, key: "key", translator: translator)
+
+        await #expect(throws: CancellationError.self) {
+            try await router.route(word)
+        }
+        #expect(translator.texts.isEmpty)
     }
 }

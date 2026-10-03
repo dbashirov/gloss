@@ -7,9 +7,9 @@ import Observation
 public final class TranslationController {
     public enum State: Sendable, Equatable {
         case idle
-        case loading(Query)
+        case loading
         case result(RoutedResult)
-        case failed(text: String, error: ProviderError)
+        case failed(ProviderError)
     }
 
     public private(set) var state: State = .idle
@@ -28,17 +28,16 @@ public final class TranslationController {
         }
         let query = QueryClassifier.classify(normalized)
         pending?.cancel()
-        state = .loading(query)
+        state = .loading
         pending = Task { [weak self, router] in
             let outcome: State
             do {
                 outcome = .result(try await router.route(query))
-            } catch is CancellationError {
-                return
             } catch let error as ProviderError {
-                outcome = .failed(text: normalized, error: error)
+                outcome = .failed(error)
             } catch {
-                outcome = .failed(text: normalized, error: .invalidResponse)
+                // includes a CancellationError of a request nobody cancelled
+                outcome = .failed(.invalidResponse)
             }
             // a cancelled request may still finish: its answer is stale
             guard !Task.isCancelled else {

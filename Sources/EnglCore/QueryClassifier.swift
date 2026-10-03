@@ -43,6 +43,10 @@ public enum QueryClassifier {
         guard wordCount <= maxDictionaryWords else {
             return .sentence
         }
+        // the dictionary is a network service: keep likely secrets on device
+        if !text.contains(where: \.isLetter) || words(in: text).contains(where: looksLikeSecret) {
+            return .sentence
+        }
         let tail = text.reversed().first { !closingWrappers.contains($0) }
         if let tail, sentenceTerminators.contains(tail) {
             return .sentence
@@ -56,6 +60,19 @@ public enum QueryClassifier {
 
     private static func isCyrillic(_ scalar: Unicode.Scalar) -> Bool {
         (0x0400...0x052F).contains(scalar.value)
+    }
+
+    /// looksLikeSecret flags tokens such as passwords, API keys and hashes: no dictionary
+    /// word mixes letters with digits at this length or switches case inside a long token.
+    static func looksLikeSecret(_ word: Substring) -> Bool {
+        let hasDigit = word.contains(where: \.isNumber)
+        let hasLower = word.contains(where: \.isLowercase)
+        let hasUpper = word.contains(where: \.isUppercase)
+        if hasDigit && (word.count >= 12 || word.count >= 8 && hasLower && hasUpper) {
+            return true
+        }
+        let hasUpperInside = word.dropFirst().contains(where: \.isUppercase)
+        return word.count >= 16 && hasLower && hasUpperInside
     }
 
     private static func words(in text: String) -> [Substring] {

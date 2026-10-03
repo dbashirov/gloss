@@ -89,9 +89,16 @@ public enum TranslationResult: Sendable, Equatable {
 public struct RoutedResult: Sendable, Equatable {
     public let providerID: String
     public let result: TranslationResult
+    /// The most useful error of the providers that failed before this one answered.
+    public let fallbackError: ProviderError?
 
-    public init(providerID: String, result: TranslationResult) {
+    public init(
+        providerID: String,
+        result: TranslationResult,
+        fallbackError: ProviderError? = nil
+    ) {
         self.providerID = providerID
         self.result = result
+        self.fallbackError = fallbackError
     }
 }

@@ -5,9 +5,20 @@ import Translation
 final class FakeTextTranslator: TextTranslator {
     typealias Handler = @Sendable (String) async throws -> String
 
+    struct Direction: Equatable {
+        let source: Language
+        let target: Language
+    }
+
+    private struct Calls {
+        var texts: [String] = []
+        var statusDirections: [Direction] = []
+        var translateDirections: [Direction] = []
+    }
+
     private let availability: LanguageAvailability.Status
     private let handler: Handler
-    private let received = Mutex<[String]>([])
+    private let calls = Mutex(Calls())
 
     init(status: LanguageAvailability.Status = .installed, handler: @escaping Handler) {
         self.availability = status
@@ -23,14 +34,23 @@ final class FakeTextTranslator: TextTranslator {
     }
 
     var texts: [String] {
-        received.withLock { $0 }
+        calls.withLock { $0.texts }
+    }
+
+    var statusDirections: [Direction] {
+        calls.withLock { $0.statusDirections }
+    }
+
+    var translateDirections: [Direction] {
+        calls.withLock { $0.translateDirections }
     }
 
     func status(
         from source: Language,
         to target: Language
     ) async -> LanguageAvailability.Status {
-        availability
+        calls.withLock { $0.statusDirections.append(Direction(source: source, target: target)) }
+        return availability
     }
 
     func translate(
@@ -38,7 +58,10 @@ final class FakeTextTranslator: TextTranslator {
         from source: Language,
         to target: Language
     ) async throws -> String {
-        received.withLock { $0.append(text) }
+        calls.withLock { calls in
+            calls.texts.append(text)
+            calls.translateDirections.append(Direction(source: source, target: target))
+        }
         return try await handler(text)
     }
 }

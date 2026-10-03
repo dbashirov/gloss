@@ -294,4 +294,72 @@ struct ClipboardWatcherTests {
 
         #expect(harness.received == ["run"])
     }
+
+    @Test func lowerChangeCountBecomesNewBaseline() {
+        let harness = Harness(changeCount: 10)
+        harness.watcher.start()
+
+        harness.pasteboard.setChangeCount(3)
+        harness.watcher.tick()
+        #expect(harness.received.isEmpty)
+
+        harness.copy("run")
+        harness.copy("run")
+        #expect(harness.received == ["run"])
+    }
+
+    @Test func ignoreOfFutureWriteWaitsForIt() {
+        let harness = Harness()
+        harness.watcher.start()
+
+        harness.watcher.ignore(changeCount: harness.pasteboard.changeCount + 1)
+        harness.watcher.tick()
+        harness.copy("бежать")
+        harness.copy("run")
+        #expect(harness.received.isEmpty)
+
+        harness.copy("run")
+        #expect(harness.received == ["run"])
+    }
+}
+
+@MainActor
+@Suite(.timeLimit(.minutes(1)))
+struct ClipboardWatcherLoopTests {
+    private func makeWatcher(_ pasteboard: FakePasteboard) -> ClipboardWatcher {
+        ClipboardWatcher(pasteboard: pasteboard, pollInterval: .milliseconds(1))
+    }
+
+    @Test func pollsPasteboardByItself() async {
+        let pasteboard = FakePasteboard()
+        let watcher = makeWatcher(pasteboard)
+        let (copies, continuation) = AsyncStream.makeStream(of: String.self)
+        watcher.onDoubleCopy = { continuation.yield($0) }
+        watcher.start()
+        defer { watcher.stop() }
+
+        pasteboard.copy("run", changes: 2)
+
+        var received: String?
+        for await text in copies {
+            received = text
+            break
+        }
+        #expect(received == "run")
+    }
+
+    @Test func stopEndsPolling() async throws {
+        let pasteboard = FakePasteboard()
+        let watcher = makeWatcher(pasteboard)
+        var received: [String] = []
+        watcher.onDoubleCopy = { received.append($0) }
+        watcher.start()
+
+        watcher.stop()
+        pasteboard.copy("run", changes: 2)
+        try await Task.sleep(for: .milliseconds(50))
+
+        #expect(received.isEmpty)
+        #expect(pasteboard.stringReads == 0)
+    }
 }

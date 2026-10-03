@@ -134,4 +134,50 @@ struct PopupGeometryTests {
 
         #expect(grown == CGPoint(x: 100, y: 0))
     }
+
+    @Test func pinnedTopLeftKeepsTopEdgeForAnyHeight() {
+        let topLeft = PopupGeometry.topLeft(of: CGRect(x: 100, y: 200, width: 380, height: 480))
+
+        let small = PopupGeometry.origin(
+            topLeft: topLeft,
+            size: CGSize(width: 380, height: 120),
+            visibleFrame: screen
+        )
+        let large = PopupGeometry.origin(topLeft: topLeft, size: size, visibleFrame: screen)
+
+        #expect(topLeft == CGPoint(x: 100, y: 680))
+        #expect(small == CGPoint(x: 100, y: 560))
+        #expect(large == CGPoint(x: 100, y: 480))
+    }
+
+    @Test func pinnedTopLeftIsClampedToScreen() {
+        let origin = PopupGeometry.origin(
+            topLeft: CGPoint(x: 1300, y: 100),
+            size: size,
+            visibleFrame: screen
+        )
+
+        #expect(origin == CGPoint(x: 1060, y: 0))
+    }
+
+    @Test func pinnedTopLeftWithoutScreenIsKept() {
+        let origin = PopupGeometry.origin(
+            topLeft: CGPoint(x: 5000, y: 900),
+            size: size,
+            visibleFrame: nil
+        )
+
+        #expect(origin == CGPoint(x: 5000, y: 700))
+    }
+
+    @Test(arguments: [
+        (CGPoint(x: 100, y: 100), true),
+        (CGPoint(x: 100.5, y: 99.5), true),
+        (CGPoint(x: 101, y: 101), true),
+        (CGPoint(x: 101.5, y: 100), false),
+        (CGPoint(x: 100, y: 98), false),
+    ])
+    func comparesPositionsUpToAPoint(other: CGPoint, isSame: Bool) {
+        #expect(PopupGeometry.isSamePosition(CGPoint(x: 100, y: 100), other) == isSame)
+    }
 }

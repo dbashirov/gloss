@@ -1,5 +1,8 @@
+import Foundation
 import Testing
 @testable import EnglCore
+
+private let text = TranslationResult.text(TextTranslation(source: "run", translation: "бежать"))
 
 private func isRussian(_ text: String) -> Bool {
     text.unicodeScalars.contains { (0x0400...0x04FF).contains($0.value) }
@@ -24,6 +27,7 @@ struct ProviderErrorMessageTests {
         (.rateLimited, nil),
         (.network, nil),
         (.invalidResponse, nil),
+        (.keyUnavailable, .openSettings),
     ])
     func mapsErrorToAction(error: ProviderError, action: ErrorAction?) {
         #expect(error.action == action)
@@ -38,18 +42,13 @@ struct ProviderErrorMessageTests {
         let titles = Set(ErrorAction.allCases.map(\.title))
         #expect(titles.count == ErrorAction.allCases.count)
     }
-
-    @Test func pasteboardHintOffersAccessAction() {
-        #expect(isRussian(PasteboardAccessHint.message))
-        #expect(PasteboardAccessHint.action == .allowPasteboardAccess)
-    }
 }
 
 struct ResultPresentationTests {
     @Test func namesYandexWithAttributionLink() {
         let info = ProviderInfo.info(for: YandexDictionaryProvider.providerID)
-        #expect(info.name.contains("Яндекс.Словарь"))
-        #expect(info.url != nil)
+        #expect(info.name == "Реализовано с помощью сервиса «Яндекс.Словарь»")
+        #expect(info.url == URL(string: "https://yandex.ru/dev/dictionary/"))
     }
 
     @Test func namesAppleTranslation() {
@@ -59,6 +58,21 @@ struct ResultPresentationTests {
 
     @Test func showsUnknownProviderByID() {
         #expect(ProviderInfo.info(for: "claude") == ProviderInfo(name: "claude", url: nil))
+    }
+
+    @Test(arguments: [ProviderError.invalidKey, .rateLimited, .keyUnavailable])
+    func showsFixableFallbackError(error: ProviderError) {
+        let routed = RoutedResult(providerID: "apple", result: text, fallbackError: error)
+        #expect(routed.fallbackNotice == error)
+    }
+
+    @Test(arguments: [
+        ProviderError?.none, .notConfigured, .notFound, .network, .invalidResponse,
+        .languagePackMissing,
+    ])
+    func hidesOtherFallbackErrors(error: ProviderError?) {
+        let routed = RoutedResult(providerID: "apple", result: text, fallbackError: error)
+        #expect(routed.fallbackNotice == nil)
     }
 
     @Test func copiesTextTranslation() {

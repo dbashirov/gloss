@@ -13,8 +13,8 @@ public final class AppSettings {
         static let doubleCopyEnabled = "doubleCopyEnabled"
         static let doubleCopyInterval = "doubleCopyInterval"
         static let isPinned = "isPinned"
-        static let pinnedOriginX = "pinnedOriginX"
-        static let pinnedOriginY = "pinnedOriginY"
+        static let pinnedTopLeftX = "pinnedTopLeftX"
+        static let pinnedTopLeftY = "pinnedTopLeftY"
     }
 
     public var doubleCopyEnabled: Bool {
@@ -30,8 +30,9 @@ public final class AppSettings {
         didSet { defaults.set(isPinned, forKey: Key.isPinned) }
     }
 
-    public var pinnedOrigin: CGPoint? {
-        didSet { savePinnedOrigin() }
+    /// Top-left corner of the pinned panel: its height follows the content.
+    public var pinnedTopLeft: CGPoint? {
+        didSet { savePinnedTopLeft() }
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -42,22 +43,22 @@ public final class AppSettings {
         doubleCopyInterval = defaults.object(forKey: Key.doubleCopyInterval) as? Double
             ?? Self.defaultDoubleCopyInterval
         isPinned = defaults.bool(forKey: Key.isPinned)
-        pinnedOrigin = Self.loadPinnedOrigin(from: defaults)
+        pinnedTopLeft = Self.loadPinnedTopLeft(from: defaults)
     }
 
-    private func savePinnedOrigin() {
-        guard let pinnedOrigin else {
-            defaults.removeObject(forKey: Key.pinnedOriginX)
-            defaults.removeObject(forKey: Key.pinnedOriginY)
+    private func savePinnedTopLeft() {
+        guard let pinnedTopLeft else {
+            defaults.removeObject(forKey: Key.pinnedTopLeftX)
+            defaults.removeObject(forKey: Key.pinnedTopLeftY)
             return
         }
-        defaults.set(Double(pinnedOrigin.x), forKey: Key.pinnedOriginX)
-        defaults.set(Double(pinnedOrigin.y), forKey: Key.pinnedOriginY)
+        defaults.set(Double(pinnedTopLeft.x), forKey: Key.pinnedTopLeftX)
+        defaults.set(Double(pinnedTopLeft.y), forKey: Key.pinnedTopLeftY)
     }
 
-    private static func loadPinnedOrigin(from defaults: UserDefaults) -> CGPoint? {
-        guard let x = defaults.object(forKey: Key.pinnedOriginX) as? Double,
-              let y = defaults.object(forKey: Key.pinnedOriginY) as? Double
+    private static func loadPinnedTopLeft(from defaults: UserDefaults) -> CGPoint? {
+        guard let x = defaults.object(forKey: Key.pinnedTopLeftX) as? Double,
+              let y = defaults.object(forKey: Key.pinnedTopLeftY) as? Double
         else {
             return nil
         }

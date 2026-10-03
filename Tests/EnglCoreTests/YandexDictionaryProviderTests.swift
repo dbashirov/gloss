@@ -1,15 +1,11 @@
 import Foundation
+import Synchronization
 import Testing
 @testable import EnglCore
 
 private let run = Query(text: "run", source: .en, target: .ru, kind: .dictionary)
 private let bezhat = Query(text: "бежать", source: .ru, target: .en, kind: .dictionary)
 private let sentence = Query(text: "I run every day", source: .en, target: .ru, kind: .sentence)
-
-private func fixture(_ name: String) throws -> Data {
-    let url = try #require(Bundle.module.url(forResource: name, withExtension: "json"))
-    return try Data(contentsOf: url)
-}
 
 private func makeProvider(
     _ http: FakeHTTPClient,
@@ -26,18 +22,6 @@ private func entry(of result: TranslationResult) throws -> DictionaryEntry {
         throw ProviderError.invalidResponse
     }
     return entry
-}
-
-private struct BrokenSecretStore: SecretStore {
-    struct Failure: Error {}
-
-    func read(_ account: String) throws -> String? {
-        throw Failure()
-    }
-
-    func write(_ value: String?, account: String) throws {
-        throw Failure()
-    }
 }
 
 struct YandexDictionaryProviderParsingTests {
@@ -128,8 +112,21 @@ struct YandexDictionaryProviderParsingTests {
             ]
         ))
     }
+
+    @Test func fallsBackToQueryWordWithoutHeadword() async throws {
+        let http = FakeHTTPClient(json: #"{"def": [{"text": " ", "tr": [{"text": "бежать"}]}]}"#)
+
+        let card = try entry(of: try await makeProvider(http).translate(run))
+
+        #expect(card == DictionaryEntry(
+            word: "run",
+            transcription: nil,
+            groups: [PartOfSpeechGroup(partOfSpeech: nil, translations: [Sense(text: "бежать")])]
+        ))
+    }
 }
 
+@Suite(.timeLimit(.minutes(1)))
 struct YandexDictionaryProviderErrorTests {
     @Test func supportsOnlyDictionaryQueries() {
         let provider = makeProvider(FakeHTTPClient(json: "{}"))
@@ -149,11 +146,11 @@ struct YandexDictionaryProviderErrorTests {
         #expect(http.urls.isEmpty)
     }
 
-    @Test func throwsNotConfiguredWhenKeyIsUnreadable() async {
+    @Test func throwsKeyUnavailableWhenKeyIsUnreadable() async {
         let http = FakeHTTPClient(json: "{}")
-        let provider = YandexDictionaryProvider(http: http, secrets: BrokenSecretStore())
+        let provider = YandexDictionaryProvider(http: http, secrets: FakeSecretStore.broken())
 
-        await #expect(throws: ProviderError.notConfigured) {
+        await #expect(throws: ProviderError.keyUnavailable) {
             try await provider.translate(run)
         }
         #expect(http.urls.isEmpty)
@@ -197,6 +194,21 @@ struct YandexDictionaryProviderErrorTests {
         let http = FakeHTTPClient(status: 200, body: try fixture("yandex_error_401"))
 
         await #expect(throws: ProviderError.invalidKey) {
+            try await makeProvider(http).translate(run)
+        }
+    }
+
+    @Test(arguments: [
+        (402, ProviderError.invalidKey),
+        (403, .rateLimited),
+        (413, .notFound),
+        (501, .notFound),
+        (500, .invalidResponse),
+    ])
+    func mapsEveryErrorCodeInSuccessfulResponse(code: Int, expected: ProviderError) async {
+        let http = FakeHTTPClient(json: #"{"code": \#(code), "message": "failure"}"#)
+
+        await #expect(throws: expected) {
             try await makeProvider(http).translate(run)
         }
     }
@@ -247,9 +259,12 @@ struct YandexDictionaryProviderErrorTests {
             withUnsafeCurrentTask { $0?.cancel() }
             throw URLError(.timedOut)
         }
+        let provider = makeProvider(http)
+        // cancels its own task, not the one running the test
+        let task = Task { try await provider.translate(run) }
 
         await #expect(throws: CancellationError.self) {
-            try await makeProvider(http).translate(run)
+            try await task.value
         }
     }
 
@@ -322,10 +337,28 @@ struct YandexLookupURLTests {
     }
 }
 
+@Suite(.serialized)
 struct URLSessionHTTPClientTests {
-    @Test func buildsGetRequestWithTimeout() throws {
-        let url = try #require(URL(string: "https://example.com/lookup?text=run"))
+    private let url = URL(string: "https://dictionary.test/lookup?text=run")!
 
+    private func makeClient(_ handler: @escaping StubURLProtocol.Handler) -> URLSessionHTTPClient {
+        StubURLProtocol.handler.withLock { $0 = handler }
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [StubURLProtocol.self]
+        return URLSessionHTTPClient(session: URLSession(configuration: configuration))
+    }
+
+    private func response(_ request: URLRequest, status: Int) throws -> URLResponse {
+        let url = try #require(request.url)
+        return try #require(HTTPURLResponse(
+            url: url,
+            statusCode: status,
+            httpVersion: nil,
+            headerFields: nil
+        ))
+    }
+
+    @Test func buildsGetRequestWithTimeout() throws {
         let request = URLSessionHTTPClient().request(for: url)
 
         #expect(request.url == url)
@@ -334,9 +367,55 @@ struct URLSessionHTTPClientTests {
         #expect(request.value(forHTTPHeaderField: "Accept") == "application/json")
     }
 
-    @Test func usesCustomTimeout() throws {
-        let url = try #require(URL(string: "https://example.com"))
+    @Test func returnsAnyStatusWithBody() async throws {
+        let requests = Mutex<[URLRequest]>([])
+        let client = makeClient { request in
+            requests.withLock { $0.append(request) }
+            return (try response(request, status: 401), Data("denied".utf8))
+        }
 
-        #expect(URLSessionHTTPClient(timeout: 2).request(for: url).timeoutInterval == 2)
+        let result = try await client.get(url)
+
+        #expect(result == HTTPResponse(statusCode: 401, body: Data("denied".utf8)))
+        let request = try #require(requests.withLock { $0.first })
+        #expect(request.url == url)
+        #expect(request.httpMethod == "GET")
+        #expect(request.timeoutInterval == 5)
+        #expect(request.value(forHTTPHeaderField: "Accept") == "application/json")
+    }
+
+    @Test func throwsTransportError() async {
+        let client = makeClient { _ in throw URLError(.notConnectedToInternet) }
+
+        await #expect {
+            try await client.get(url)
+        } throws: { error in
+            (error as? URLError)?.code == .notConnectedToInternet
+        }
+    }
+
+    @Test func rejectsNonHTTPResponse() async {
+        let client = makeClient { request in
+            let response = URLResponse(
+                url: request.url ?? url,
+                mimeType: "application/json",
+                expectedContentLength: 2,
+                textEncodingName: nil
+            )
+            return (response, Data("{}".utf8))
+        }
+
+        await #expect {
+            try await client.get(url)
+        } throws: { error in
+            (error as? URLError)?.code == .badServerResponse
+        }
+    }
+
+    @Test func defaultSessionKeepsNothingOnDisk() {
+        let configuration = URLSessionHTTPClient.makeSession().configuration
+
+        #expect(configuration.urlCache == nil)
+        #expect(configuration.requestCachePolicy == .reloadIgnoringLocalCacheData)
     }
 }

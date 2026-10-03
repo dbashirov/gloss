@@ -4,30 +4,13 @@ import Observation
 import ServiceManagement
 import Translation
 
-/// SettingsNote is a one-line outcome shown under a settings control.
-struct SettingsNote: Equatable {
-    let text: String
-    let isError: Bool
-
-    static func success(_ text: String) -> SettingsNote {
-        SettingsNote(text: text, isError: false)
-    }
-
-    static func failure(_ text: String) -> SettingsNote {
-        SettingsNote(text: text, isError: true)
-    }
-}
-
 /// SettingsModel holds the settings window state that does not live in `AppSettings`:
-/// the Yandex key draft, the login item, paste access and the language pack.
+/// the Yandex key, the login item, paste access and the language pack.
 @MainActor
 @Observable
 final class SettingsModel {
     static let keyURL = URL(string: "https://yandex.ru/dev/dictionary/keys/get/?service=dict")!
 
-    var keyDraft = ""
-    private(set) var keyNote: SettingsNote?
-    private(set) var isCheckingKey = false
     private(set) var launchState = LaunchAtLoginState.unavailable
     private(set) var launchNote: SettingsNote?
     private(set) var pasteAccess = NSPasteboard.AccessBehavior.default
@@ -38,27 +21,23 @@ final class SettingsModel {
 
     /// Brings the settings window forward: the download dialog needs an active key window.
     @ObservationIgnored var activateWindow: () -> Void = {}
-    @ObservationIgnored private let keyStore: YandexKeyStore
-    @ObservationIgnored private let keyCheck: YandexKeyCheck
+    @ObservationIgnored let key: YandexKeySettings
     @ObservationIgnored private let pasteboard: SystemPasteboard
     @ObservationIgnored private let textTranslator: any TextTranslator
-    @ObservationIgnored private var checkTask: Task<Void, Never>?
 
     init(
-        keyStore: YandexKeyStore,
-        keyCheck: YandexKeyCheck,
+        key: YandexKeySettings,
         pasteboard: SystemPasteboard,
         textTranslator: any TextTranslator
     ) {
-        self.keyStore = keyStore
-        self.keyCheck = keyCheck
+        self.key = key
         self.pasteboard = pasteboard
         self.textTranslator = textTranslator
     }
 
     /// Reloads everything the window shows, including the stored key.
     func reload() {
-        loadKey()
+        key.load()
         refreshStatuses()
     }
 
@@ -68,45 +47,6 @@ final class SettingsModel {
         pasteAccess = pasteboard.accessBehavior
         Task {
             await refreshPackState()
-        }
-    }
-
-    func saveKey() {
-        let key = keyDraft
-        Task {
-            do {
-                try await keyStore.save(key)
-            } catch {
-                keyNote = .failure("Не удалось сохранить ключ в Связку ключей")
-                return
-            }
-            let saved = key.trimmingCharacters(in: .whitespacesAndNewlines)
-            keyDraft = saved
-            keyNote = .success(saved.isEmpty ? "Ключ удалён" : "Ключ сохранён")
-        }
-    }
-
-    func checkKey() {
-        checkTask?.cancel()
-        let key = keyDraft
-        keyNote = nil
-        isCheckingKey = true
-        checkTask = Task {
-            let note: SettingsNote
-            do {
-                try await keyCheck.check(key)
-                note = .success("Ключ действителен")
-            } catch let error as ProviderError {
-                note = .failure(error.message)
-            } catch {
-                return
-            }
-            // a newer check or a reload has taken over
-            guard !Task.isCancelled else {
-                return
-            }
-            keyNote = note
-            isCheckingKey = false
         }
     }
 
@@ -153,18 +93,6 @@ final class SettingsModel {
             packNote = .failure("Пакет не скачан: \(failure)")
         }
         await refreshPackState()
-    }
-
-    private func loadKey() {
-        checkTask?.cancel()
-        isCheckingKey = false
-        keyNote = nil
-        do {
-            keyDraft = try keyStore.load()
-        } catch {
-            keyDraft = ""
-            keyNote = .failure("Не удалось прочитать ключ из Связки ключей")
-        }
     }
 
     private func refreshLaunchState() {

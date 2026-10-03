@@ -51,3 +51,60 @@ struct InMemorySecretStoreTests {
         #expect((0..<100).allSatisfy { store.read("account-\($0)") == "\($0)" })
     }
 }
+
+struct CachedSecretStoreTests {
+    @Test func readsBaseOnce() throws {
+        let base = FakeSecretStore(["yandex-dictionary": "key"])
+        let store = CachedSecretStore(base)
+
+        #expect(try store.read("yandex-dictionary") == "key")
+        #expect(try store.read("yandex-dictionary") == "key")
+        #expect(base.reads == 1)
+    }
+
+    @Test func cachesMissingValue() throws {
+        let base = FakeSecretStore()
+        let store = CachedSecretStore(base)
+
+        #expect(try store.read("yandex-dictionary") == nil)
+        #expect(try store.read("yandex-dictionary") == nil)
+        #expect(base.reads == 1)
+    }
+
+    @Test(arguments: [("new", "new"), ("", nil), (nil, nil)] as [(String?, String?)])
+    func writeUpdatesBaseAndCache(value: String?, expected: String?) throws {
+        let base = FakeSecretStore(["yandex-dictionary": "old"])
+        let store = CachedSecretStore(base)
+        _ = try store.read("yandex-dictionary")
+
+        try store.write(value, account: "yandex-dictionary")
+
+        #expect(try store.read("yandex-dictionary") == expected)
+        #expect(base.value("yandex-dictionary") == expected)
+        #expect(base.reads == 1)
+    }
+
+    @Test func failedReadIsRetried() throws {
+        let base = FakeSecretStore(["yandex-dictionary": "key"], failsReads: true)
+        let store = CachedSecretStore(base)
+
+        #expect(throws: FakeSecretStore.Failure.self) {
+            try store.read("yandex-dictionary")
+        }
+        base.failsReads = false
+
+        #expect(try store.read("yandex-dictionary") == "key")
+    }
+
+    @Test func failedWriteKeepsCache() throws {
+        let base = FakeSecretStore(["yandex-dictionary": "old"], failsWrites: true)
+        let store = CachedSecretStore(base)
+        _ = try store.read("yandex-dictionary")
+
+        #expect(throws: FakeSecretStore.Failure.self) {
+            try store.write("new", account: "yandex-dictionary")
+        }
+
+        #expect(try store.read("yandex-dictionary") == "old")
+    }
+}

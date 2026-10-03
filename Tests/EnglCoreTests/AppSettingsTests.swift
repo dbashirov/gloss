@@ -32,7 +32,7 @@ struct AppSettingsTests {
         #expect(settings.doubleCopyEnabled)
         #expect(settings.doubleCopyInterval == 0.5)
         #expect(!settings.isPinned)
-        #expect(settings.pinnedOrigin == nil)
+        #expect(settings.pinnedTopLeft == nil)
     }
 
     @Test func reloadsSavedValues() throws {
@@ -43,36 +43,36 @@ struct AppSettingsTests {
         settings.doubleCopyEnabled = false
         settings.doubleCopyInterval = 0.8
         settings.isPinned = true
-        settings.pinnedOrigin = CGPoint(x: 120.5, y: -40)
+        settings.pinnedTopLeft = CGPoint(x: 120.5, y: -40)
 
         let reloaded = AppSettings(defaults: try makeDefaults(suiteName))
         #expect(!reloaded.doubleCopyEnabled)
         #expect(reloaded.doubleCopyInterval == 0.8)
         #expect(reloaded.isPinned)
-        #expect(reloaded.pinnedOrigin == CGPoint(x: 120.5, y: -40))
+        #expect(reloaded.pinnedTopLeft == CGPoint(x: 120.5, y: -40))
     }
 
-    @Test func clearsPinnedOrigin() throws {
+    @Test func clearsPinnedTopLeft() throws {
         let suiteName = makeSuiteName()
         defer { removeSuite(suiteName) }
         let defaults = try makeDefaults(suiteName)
         let settings = AppSettings(defaults: defaults)
-        settings.pinnedOrigin = CGPoint(x: 10, y: 20)
+        settings.pinnedTopLeft = CGPoint(x: 10, y: 20)
 
-        settings.pinnedOrigin = nil
+        settings.pinnedTopLeft = nil
 
-        #expect(AppSettings(defaults: try makeDefaults(suiteName)).pinnedOrigin == nil)
-        #expect(defaults.object(forKey: AppSettings.Key.pinnedOriginX) == nil)
-        #expect(defaults.object(forKey: AppSettings.Key.pinnedOriginY) == nil)
+        #expect(AppSettings(defaults: try makeDefaults(suiteName)).pinnedTopLeft == nil)
+        #expect(defaults.object(forKey: AppSettings.Key.pinnedTopLeftX) == nil)
+        #expect(defaults.object(forKey: AppSettings.Key.pinnedTopLeftY) == nil)
     }
 
-    @Test func ignoresIncompletePinnedOrigin() throws {
+    @Test func ignoresIncompletePinnedTopLeft() throws {
         let suiteName = makeSuiteName()
         defer { removeSuite(suiteName) }
         let defaults = try makeDefaults(suiteName)
-        defaults.set(10.0, forKey: AppSettings.Key.pinnedOriginX)
+        defaults.set(10.0, forKey: AppSettings.Key.pinnedTopLeftX)
 
-        #expect(AppSettings(defaults: defaults).pinnedOrigin == nil)
+        #expect(AppSettings(defaults: defaults).pinnedTopLeft == nil)
     }
 
     @Test func keepsExplicitFalseAndZeroValues() throws {
@@ -81,11 +81,11 @@ struct AppSettingsTests {
         let settings = AppSettings(defaults: try makeDefaults(suiteName))
 
         settings.doubleCopyEnabled = false
-        settings.pinnedOrigin = .zero
+        settings.pinnedTopLeft = .zero
 
         let reloaded = AppSettings(defaults: try makeDefaults(suiteName))
         #expect(!reloaded.doubleCopyEnabled)
-        #expect(reloaded.pinnedOrigin == .zero)
+        #expect(reloaded.pinnedTopLeft == .zero)
     }
 
     @Test func suitesAreIsolated() throws {

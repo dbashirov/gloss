@@ -6,7 +6,6 @@ let package = Package(
     platforms: [.macOS(.v26)],
     products: [
         .executable(name: "Engl", targets: ["Engl"]),
-        .library(name: "EnglCore", targets: ["EnglCore"]),
     ],
     targets: [
         .target(name: "EnglCore"),

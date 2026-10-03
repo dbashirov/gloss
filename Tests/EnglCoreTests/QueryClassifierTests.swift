@@ -71,7 +71,12 @@ struct QueryClassifierTests {
     @Test func keepsPunctuationOnlyText() {
         let query = QueryClassifier.classify(",")
         #expect(query.text == ",")
-        #expect(query.kind == .dictionary)
+        #expect(query.kind == .sentence)
+    }
+
+    @Test(arguments: [("'tis", "tis"), ("-ish", "ish"), ("rock'n'roll!?", "rock'n'roll!?")])
+    func trimsLeadingAndTrailingPunctuationForLookup(text: String, expected: String) {
+        #expect(QueryClassifier.classify(text).text == expected)
     }
 
     @Test(arguments: [
@@ -109,5 +114,33 @@ struct QueryClassifierTests {
         let query = QueryClassifier.classify("look up the word")
         #expect(query.kind == .sentence)
         #expect(query.source == .en)
+    }
+
+    @Test(arguments: [
+        "Qwerty123",
+        "p4ssw0rd2024",
+        "dict.1.1.20240101T000000Z.abc123",
+        "sk-ant-api03-AbCdEf",
+        "ghp_AbCdEfGhIjKlMnOpQrSt",
+        "eyJhbGciOiJIUzI1NiJ9",
+        "token Qwerty123!",
+        "мойПароль2024",
+    ])
+    func keepsLikelySecretsAwayFromDictionary(text: String) {
+        #expect(QueryClassifier.classify(text).kind == .sentence)
+    }
+
+    @Test(arguments: [
+        "run", "Hello", "iPhone", "McDonald's", "JavaScript", "COVID-19", "covid-19", "mp3",
+        "B2B", "Windows 11", "PlayStation 5", "mother-in-law", "Antidisestablishmentarianism",
+        "человеконенавистничество", "New York", "из-за",
+    ])
+    func sendsOrdinaryWordsToDictionary(text: String) {
+        #expect(QueryClassifier.classify(text).kind == .dictionary)
+    }
+
+    @Test(arguments: ["42", "2024-01-01", "+7 999 123-45-67", "3.14"])
+    func sendsTextWithoutLettersToTranslator(text: String) {
+        #expect(QueryClassifier.classify(text).kind == .sentence)
     }
 }

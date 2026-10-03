@@ -39,6 +39,10 @@ final class FakeProvider: TranslationProvider {
         received.withLock { $0.count }
     }
 
+    var queries: [Query] {
+        received.withLock { $0 }
+    }
+
     func supports(_ query: Query) -> Bool {
         kinds.contains(query.kind)
     }

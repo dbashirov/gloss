@@ -37,6 +37,26 @@ public enum PopupGeometry {
         return clamp(origin: origin, size: size, visibleFrame: visibleFrame)
     }
 
+    /// Returns the origin of a panel whose top-left corner is pinned at `topLeft`:
+    /// the height changes with the content, the top edge stays.
+    public static func origin(topLeft: CGPoint, size: CGSize, visibleFrame: CGRect?) -> CGPoint {
+        let origin = CGPoint(x: topLeft.x, y: topLeft.y - size.height)
+        guard let visibleFrame else {
+            return origin
+        }
+        return clamp(origin: origin, size: size, visibleFrame: visibleFrame)
+    }
+
+    public static func topLeft(of frame: CGRect) -> CGPoint {
+        CGPoint(x: frame.minX, y: frame.maxY)
+    }
+
+    /// Tells whether two positions are the same up to a point: AppKit may round
+    /// a frame to the pixel grid.
+    public static func isSamePosition(_ lhs: CGPoint, _ rhs: CGPoint) -> Bool {
+        abs(lhs.x - rhs.x) <= 1 && abs(lhs.y - rhs.y) <= 1
+    }
+
     /// Returns the index of the frame that contains the point or, when none does,
     /// the closest one. `nil` only for an empty list.
     public static func nearestFrameIndex(to point: CGPoint, in frames: [CGRect]) -> Int? {

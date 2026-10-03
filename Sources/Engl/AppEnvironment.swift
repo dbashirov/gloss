@@ -4,8 +4,6 @@ import EnglCore
 @MainActor
 final class AppEnvironment {
     let settings: AppSettings
-    let secrets: any SecretStore
-    let router: Router
     let keyStore: YandexKeyStore
     let keyCheck: YandexKeyCheck
     let translator: TranslationController
@@ -14,9 +12,9 @@ final class AppEnvironment {
 
     init() {
         settings = AppSettings()
-        secrets = KeychainSecretStore()
+        let secrets = CachedSecretStore(KeychainSecretStore())
         let http = URLSessionHTTPClient()
-        router = Router(providers: [
+        let router = Router(providers: [
             YandexDictionaryProvider(http: http, secrets: secrets),
             AppleTranslationProvider(),
         ])
@@ -24,9 +22,7 @@ final class AppEnvironment {
         keyCheck = YandexKeyCheck(http: http)
         translator = TranslationController(router: router)
         pasteboard = SystemPasteboard()
-        watcher = ClipboardWatcher(
-            pasteboard: pasteboard,
-            interval: .seconds(settings.doubleCopyInterval)
-        )
+        // the interval comes from settings in AppDelegate.applyDoubleCopySettings
+        watcher = ClipboardWatcher(pasteboard: pasteboard)
     }
 }

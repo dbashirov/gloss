@@ -173,6 +173,10 @@ protocol TranslationProvider: Sendable {
 - направление: `en → ru`, `ru → en`
 - тип: после нормализации ≤3 слов и нет завершающей пунктуации предложения → `dictionary`,
   иначе `sentence`
+- текст без букв и токены, похожие на секреты (`QueryClassifier.looksLikeSecret`: буквы
+  с цифрами от 12 символов или от 8 при смешанном регистре; смена регистра внутри токена
+  от 16 символов), → `sentence`: они не уходят в сетевой словарь, а переводятся
+  на устройстве через Apple
 
 ### Router и кеш
 - `Router` — `actor`, хранит провайдеров по порядку и простой кеш (словарь с лимитом
@@ -185,12 +189,17 @@ protocol TranslationProvider: Sendable {
 - кешируется только результат, полученный без ошибок предыдущих провайдеров (иначе
   Apple-фолбэк на слово «залипнет» в кеше вместо карточки Yandex); `invalidate()` вызывается
   при смене ключа
+- `RoutedResult.fallbackError` — самая полезная ошибка провайдеров, не ответивших до того,
+  кто ответил; `invalidKey` / `rateLimited` / `keyUnavailable` показываются над футером
+  фолбэк-ответа (`RoutedResult.fallbackNotice`) с кнопкой «Открыть настройки»
 
 ### Отмена
 - провайдеры маппят `URLError(.cancelled)` и `TranslationError.alreadyCancelled`
   в `CancellationError`, а не в `network`; перед маппингом ошибок —
   `try Task.checkCancellation()`
-- `TranslationController` игнорирует `CancellationError` (состояние не меняется)
+- `TranslationController` отбрасывает ответ отменённой задачи (`Task.isCancelled`);
+  `CancellationError` без отмены задачи → `failed(.invalidResponse)`, чтобы спиннер
+  не крутился вечно; так же сбрасывается проверка ключа в настройках
 
 ### Yandex Dictionary API
 - `GET https://dictionary.yandex.net/api/v1/dicservice.json/lookup`
@@ -202,8 +211,12 @@ protocol TranslationProvider: Sendable {
   `tr` → `Sense`, `syn[].text` → `synonyms`, `mean[].text` → `meanings`
 - ошибки: пустой `def` → `notFound`; 401/402 → `invalidKey`; 403 → `rateLimited`
   (дневной лимит); 413/501 → `notFound`; 5xx и битый JSON → `invalidResponse`;
-  таймаут/нет сети → `network`; нет ключа → `notConfigured`
-- таймаут запроса 5 с; HTTP скрыт за `protocol HTTPClient: Sendable`
+  таймаут/нет сети → `network`; нет ключа → `notConfigured`; Keychain отказал в чтении
+  ключа → `keyUnavailable`
+- таймаут запроса 5 с; HTTP скрыт за `protocol HTTPClient: Sendable`; `URLSession`
+  с `.ephemeral`-конфигурацией без `URLCache` (ключ в query string не попадает на диск)
+- ключ читается через `CachedSecretStore`: Keychain спрашивается один раз, запись
+  обновляет кеш
 
 ### Apple Translation
 - `protocol TextTranslator: Sendable` с асинхронными `status(from:to:)` и
@@ -242,7 +255,9 @@ protocol TranslationProvider: Sendable {
   `canBecomeKey → true`; `level = .floating`;
   `collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]`; `hidesOnDeactivate = false`
 - показ — `makeKeyAndOrderFront` (панель берёт key-фокус, как Spotlight: можно сразу
-  редактировать запрос); Esc — через `cancelOperation(_:)`, не через глобальный монитор
+  редактировать запрос); Esc перехватывается в `sendEvent(_:)` до field editor поля
+  запроса (иначе он открывает автодополнение), не через глобальный монитор; Cmd+W —
+  `performClose(_:)`, закрывает окно в любом режиме
 - контент: фиксированная ширина (~380 pt), максимальная высота (~480 pt) со скроллом;
   при изменении размера контента origin пересчитывается через `PopupGeometry`
 - попап: origin — `PopupGeometry.origin(cursor:size:visibleFrame:)` (смещение от курсора,
@@ -250,9 +265,10 @@ protocol TranslationProvider: Sendable {
 - закрытие попапа: Esc, глобальный монитор `leftMouseDown`/`rightMouseDown` вне окна,
   `NSWorkspace.didActivateApplicationNotification`; монитор снимается при скрытии
 - 📌: мониторы отключаются, перетаскивание — через ручку в заголовке (`WindowDragGesture`),
-  т.к. `isMovableByWindowBackground` поверх `NSHostingView` не работает; позиция сохраняется
-  при `windowDidMove`; сохранённая позиция при показе прогоняется через clamp (монитор
-  мог быть отключён)
+  т.к. `isMovableByWindowBackground` поверх `NSHostingView` не работает; сохраняется
+  верхний левый угол (высота меняется с контентом) при закреплении и при перетаскивании
+  пользователем (`windowDidMove` вне собственного размещения, сравнение с допуском 1 pt);
+  при показе позиция прогоняется через clamp (монитор мог быть отключён)
 
 ### Трей
 - `NSStatusItem` без `statusItem.menu`; `button.sendAction(on: [.leftMouseUp, .rightMouseUp])`:
@@ -262,7 +278,8 @@ protocol TranslationProvider: Sendable {
 - `AppSettings` (`@Observable`): хранимые свойства с `didSet → defaults.set`, загрузка в `init`
   (вычисляемые свойства поверх `UserDefaults` не уведомляют SwiftUI)
 - `doubleCopyEnabled: Bool = true`, `doubleCopyInterval: Double = 0.5`,
-  `isPinned: Bool = false`, `pinnedOrigin: CGPoint?` (хранится как два `Double`)
+  `isPinned: Bool = false`, `pinnedTopLeft: CGPoint?` (верхний левый угол, хранится как
+  два `Double`)
 - ключ Yandex — в Keychain (`service = com.dbashirov.engl`, `account = yandex-dictionary`)
 - запуск при логине — состояние из `SMAppService.mainApp.status`; работает только для
   бандла из `/Applications`; `.requiresApproval` → `SMAppService.openSystemSettingsLoginItems()`
@@ -270,14 +287,21 @@ protocol TranslationProvider: Sendable {
 ### Сборка
 - `Package.swift`: `// swift-tools-version:6.2`, `platforms: [.macOS(.v26)]`, targets
   `EnglCore`, `Engl`, `EnglCoreTests` (ресурсы-фикстуры через `.process("Fixtures")`)
-- `scripts/build-app.sh`: `swift build -c release`, `BIN=$(swift build -c release --show-bin-path)`
-  → `build/Engl.app/Contents/{MacOS,Resources}` + `Info.plist` →
-  `codesign --force --sign "${CODESIGN_IDENTITY:--}" build/Engl.app`
+- `scripts/build-app.sh`: `swift build -c release --product Engl`,
+  `BIN=$(swift build -c release --show-bin-path)` → `build/Engl.app/Contents/{MacOS,Resources}`
+  + `Info.plist` (`plutil -lint`) →
+  `codesign --force --timestamp=none --sign "${CODESIGN_IDENTITY:--}" build/Engl.app` →
+  `codesign --verify --strict build/Engl.app`
 - `Info.plist`: `CFBundleIdentifier = com.dbashirov.engl`, `CFBundleExecutable = Engl`,
   `CFBundleName = Engl`, `CFBundlePackageType = APPL`, `CFBundleShortVersionString = 0.1.0`,
   `CFBundleVersion = 1`, `LSUIElement = true`, `LSMinimumSystemVersion = 26.0`
-- `Makefile`: `build`, `test`, `app`, `run` (`open build/Engl.app`), `install`
-  (копия в `/Applications`), `clean`
+- `Makefile`: `build`, `test`, `coverage` (`swift test --enable-code-coverage` +
+  `llvm-cov report` по `Sources/EnglCore`), `app`, `run` (`open build/Engl.app`), `install`
+  (копия в `/Applications`), `clean` (`swift package clean` + `rm -rf build`); `test` и
+  `coverage` передают `-plugin-path` к плагину Swift Testing
+- интеграционные тесты на системных сервисах отключаются trait'ом
+  `@Suite(.enabled("…", asyncCondition))`, тесты на реальном login keychain помечены
+  тегом `.keychain`
 
 ## What Goes Where
 - **Implementation Steps** (`[ ]` checkboxes): tasks achievable within this codebase - code changes, tests, documentation updates
@@ -424,7 +448,7 @@ protocol TranslationProvider: Sendable {
 - [x] написать тесты провайдера на фейке: установлен, не скачан, не поддерживается,
   `notInstalled` при переводе, прочая ошибка перевода, отмена
 - [x] написать интеграционный тест на реальном `Translation` с
-  `.enabled(if:)` по статусу `.installed` (сейчас будет пропущен)
+  `@Suite(.enabled("…", asyncCondition))` по статусу `.installed` (сейчас будет пропущен)
   (на этой машине пакет en↔ru не установлен — suite пропускается по runtime-условию)
 - [x] run tests - must pass before next task
 
@@ -636,6 +660,10 @@ add-generic-password` до появления окна настроек в Task 
 - скачать языковой пакет en↔ru
 - при первом двойном Cmd+C разрешить доступ к буферу («Разрешать всегда»)
 
+**Ручная проверка API:**
+- сверить фикстуры `Tests/EnglCoreTests/Fixtures/yandex_*.json` с реальным ответом
+  `lookup` (`curl` с ключом): поля `def/ts/tr/syn/mean/ex` и тело ошибки
+
 **Ручная проверка UI:**
 - двойной Cmd+C в Safari, Chrome, VS Code, Terminal, Telegram, Preview (PDF), Notes —
   в каких приложениях повторный Cmd+C не меняет `changeCount` (если таких много —
@@ -647,7 +675,11 @@ add-generic-password` до появления окна настроек в Task 
 - попап у курсора: края экрана, второй монитор, полноэкранное приложение, другой Space
 - закреплённое окно: перетаскивание за ручку, позиция переживает перезапуск и отключение
   монитора, новые переводы появляются в нём
-- Esc, клик мимо и Cmd+Tab закрывают попап, но не закреплённое окно
+- Esc (в том числе с фокусом в поле запроса), клик мимо и Cmd+Tab закрывают попап,
+  но не закреплённое окно; Cmd+W и ✕ закрывают окно в любом режиме
+- высота окна: длинная карточка с плашкой «Доступ к буферу запрещён» не обрезает
+  заголовок и футер
+- неверный ключ Yandex: перевод слова от Apple с пометкой «Ключ недействителен»
 - 🔊 произносит слово, 📋 копирует и не запускает повторный перевод
 - поведение без сети (Yandex → fallback на Apple), без ключа, без языкового пакета
 - запуск при входе в систему после перезагрузки (бандл из `/Applications`)

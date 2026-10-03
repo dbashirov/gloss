@@ -2,11 +2,6 @@ import Foundation
 import Testing
 @testable import EnglCore
 
-private func fixture(_ name: String) throws -> Data {
-    let url = try #require(Bundle.module.url(forResource: name, withExtension: "json"))
-    return try Data(contentsOf: url)
-}
-
 private func queryValue(_ name: String, in url: URL) -> String? {
     let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
     return components?.queryItems?.first { $0.name == name }?.value
