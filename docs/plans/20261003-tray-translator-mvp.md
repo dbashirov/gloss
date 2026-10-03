@@ -331,14 +331,14 @@ protocol TranslationProvider: Sendable {
 - Create: `Sources/EnglCore/QueryClassifier.swift`
 - Create: `Tests/EnglCoreTests/QueryClassifierTests.swift`
 
-- [ ] реализовать определение языка: эвристика по кириллице для коротких строк,
+- [x] реализовать определение языка: эвристика по кириллице для коротких строк,
   `NLLanguageRecognizer` с ограничением en/ru для длинных
-- [ ] реализовать определение типа: ≤3 слов без завершающей пунктуации → `dictionary`
-- [ ] собрать `QueryClassifier.classify(_:) -> Query` с направлением en→ru / ru→en
-- [ ] написать тесты: английское слово, русское слово, фраза из 3 слов, предложение en/ru
-- [ ] написать тесты пограничных случаев: слово с апострофом (`don't`), дефис
+- [x] реализовать определение типа: ≤3 слов без завершающей пунктуации → `dictionary`
+- [x] собрать `QueryClassifier.classify(_:) -> Query` с направлением en→ru / ru→en
+- [x] написать тесты: английское слово, русское слово, фраза из 3 слов, предложение en/ru
+- [x] написать тесты пограничных случаев: слово с апострофом (`don't`), дефис
   (`well-known`), смешанный текст, цифры, «Hello.» с точкой
-- [ ] run tests - must pass before next task
+- [x] run tests - must pass before next task
 
 ### Task 4: Протокол провайдера и Router с кешем
 
