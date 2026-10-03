@@ -348,16 +348,16 @@ protocol TranslationProvider: Sendable {
 - Create: `Tests/EnglCoreTests/RouterTests.swift`
 - Create: `Tests/EnglCoreTests/Fakes/FakeProvider.swift`
 
-- [ ] объявить `protocol TranslationProvider`
-- [ ] реализовать `actor Router` с `route(_:) async throws -> RoutedResult` и `invalidate()`:
+- [x] объявить `protocol TranslationProvider`
+- [x] реализовать `actor Router` с `route(_:) async throws -> RoutedResult` и `invalidate()`:
   кеш с лимитом, цепочка провайдеров, переход дальше на любую `ProviderError`,
   приоритет итоговой ошибки, кеширование только «чистых» результатов (см. Technical Details)
-- [ ] написать тесты: первый провайдер ответил; `notFound` → второй; `invalidKey` → второй
+- [x] написать тесты: первый провайдер ответил; `notFound` → второй; `invalidKey` → второй
   ответил; провайдер не поддерживает запрос; все упали → ошибка по приоритету
-- [ ] написать тесты кеша и отмены: повторный запрос из кеша; результат фолбэка не кешируется;
+- [x] написать тесты кеша и отмены: повторный запрос из кеша; результат фолбэка не кешируется;
   `invalidate()` очищает кеш; вытеснение при превышении лимита; `CancellationError`
   не приводит к переходу на следующий провайдер
-- [ ] run tests - must pass before next task
+- [x] run tests - must pass before next task
 
 ### Task 5: Хранилище секретов (Keychain)
 
