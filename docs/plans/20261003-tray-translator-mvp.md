@@ -298,16 +298,16 @@ protocol TranslationProvider: Sendable {
 - [x] починить CLT (выполнил пользователь): удалены устаревшие
   `/Library/Developer/CommandLineTools/usr/lib/swift/pm/{ManifestAPI/PackageDescription,
   PluginAPI/PackagePlugin}.swiftmodule/*.private.swiftinterface`; `swift build` работает
-- [ ] создать `Package.swift` с targets `EnglCore`, `Engl`, `EnglCoreTests`, платформа macOS 26
-- [ ] минимальный `Sources/Engl/main.swift` (запускает `NSApplication`, пока без UI)
-- [ ] `.gitignore` (`.build/`, `build/`, `.swiftpm/`, `*.xcodeproj`)
-- [ ] `Makefile` с целями `build`, `test`, `clean`; ⚠️ на CLT без Xcode `swift test` не находит
+- [x] создать `Package.swift` с targets `EnglCore`, `Engl`, `EnglCoreTests`, платформа macOS 26
+- [x] минимальный `Sources/Engl/main.swift` (запускает `NSApplication`, пока без UI)
+- [x] `.gitignore` (`.build/`, `build/`, `.swiftpm/`, `*.xcodeproj`)
+- [x] `Makefile` с целями `build`, `test`, `clean`; ⚠️ на CLT без Xcode `swift test` не находит
   плагин макросов Swift Testing (`plugin for module 'TestingMacros' not found`) — цель `test`
   передаёт `-Xswiftc -plugin-path -Xswiftc <toolchain>/usr/lib/swift/host/plugins/testing`,
   где `<toolchain>` вычисляется из `xcrun --find swift` (проверено: с флагом тесты проходят);
   тесты запускать только через `make test`
-- [ ] написать smoke-тест в `SmokeTests.swift`
-- [ ] run tests (`make test`) - must pass before next task
+- [x] написать smoke-тест в `SmokeTests.swift`
+- [x] run tests (`make test`) - must pass before next task
 
 ### Task 2: Модели и нормализация текста
 
