@@ -171,6 +171,41 @@ struct PopupGeometryTests {
     }
 
     @Test(arguments: [
+        // wider and taller: the drag goes right and down
+        (CGPoint(x: 600, y: 300), CGRect(x: 100, y: 300, width: 500, height: 300)),
+        // smaller than the minimum
+        (CGPoint(x: 300, y: 500), CGRect(x: 100, y: 440, width: 300, height: 160)),
+        // past the right and bottom screen edges
+        (CGPoint(x: 5000, y: -5000), CGRect(x: 100, y: 0, width: 1340, height: 600)),
+    ])
+    func resizesByDraggingBottomRightCorner(dragCurrent: CGPoint, expected: CGRect) {
+        let frame = PopupGeometry.resizedFrame(
+            CGRect(x: 100, y: 400, width: 380, height: 200),
+            dragStart: CGPoint(x: 480, y: 400),
+            dragCurrent: dragCurrent,
+            minSize: CGSize(width: 300, height: 160),
+            visibleFrame: screen
+        )
+
+        #expect(frame == expected)
+    }
+
+    @Test(arguments: [
+        (CGSize(width: 500, height: 400), CGSize(width: 500, height: 400)),
+        (CGSize(width: 2000, height: 1000), CGSize(width: 1440, height: 875)),
+        (CGSize(width: 100, height: 50), CGSize(width: 300, height: 160)),
+    ])
+    func fitsSavedSizeIntoScreen(saved: CGSize, expected: CGSize) {
+        let fitted = PopupGeometry.fit(
+            size: saved,
+            minSize: CGSize(width: 300, height: 160),
+            visibleFrame: screen
+        )
+
+        #expect(fitted == expected)
+    }
+
+    @Test(arguments: [
         (CGPoint(x: 100, y: 100), true),
         (CGPoint(x: 100.5, y: 99.5), true),
         (CGPoint(x: 101, y: 101), true),

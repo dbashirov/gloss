@@ -11,10 +11,19 @@ final class PanelModel {
     var isPasteAccessDenied = false
 }
 
+/// PanelResizePhase is a step of resizing the panel by its corner grip.
+enum PanelResizePhase {
+    case changed
+    case ended
+}
+
 /// PanelActions are the commands the panel content sends to its controller.
 struct PanelActions {
     let togglePin: () -> Void
     let close: () -> Void
     let copy: (String) -> Void
     let perform: (ErrorAction) -> Void
+    let resize: (PanelResizePhase) -> Void
+    /// Returns the panel to the size of its content.
+    let resetSize: () -> Void
 }

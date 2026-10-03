@@ -15,6 +15,8 @@ public final class AppSettings {
         static let isPinned = "isPinned"
         static let pinnedTopLeftX = "pinnedTopLeftX"
         static let pinnedTopLeftY = "pinnedTopLeftY"
+        static let panelWidth = "panelWidth"
+        static let panelHeight = "panelHeight"
     }
 
     public var doubleCopyEnabled: Bool {
@@ -35,6 +37,11 @@ public final class AppSettings {
         didSet { savePinnedTopLeft() }
     }
 
+    /// Panel size chosen by the user; `nil` sizes the panel to its content.
+    public var panelSize: CGSize? {
+        didSet { savePanelSize() }
+    }
+
     @ObservationIgnored private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
@@ -43,6 +50,7 @@ public final class AppSettings {
         doubleCopyInterval = Self.loadDoubleCopyInterval(from: defaults)
         isPinned = defaults.bool(forKey: Key.isPinned)
         pinnedTopLeft = Self.loadPinnedTopLeft(from: defaults)
+        panelSize = Self.loadPanelSize(from: defaults)
         if defaults.object(forKey: Key.legacyDoubleCopyInterval) != nil {
             saveDoubleCopyInterval()
         }
@@ -82,6 +90,16 @@ public final class AppSettings {
         defaults.set(Double(pinnedTopLeft.y), forKey: Key.pinnedTopLeftY)
     }
 
+    private func savePanelSize() {
+        guard let panelSize else {
+            defaults.removeObject(forKey: Key.panelWidth)
+            defaults.removeObject(forKey: Key.panelHeight)
+            return
+        }
+        defaults.set(Double(panelSize.width), forKey: Key.panelWidth)
+        defaults.set(Double(panelSize.height), forKey: Key.panelHeight)
+    }
+
     private static func loadDoubleCopyInterval(from defaults: UserDefaults) -> Duration {
         if let milliseconds = defaults.object(forKey: Key.doubleCopyIntervalMilliseconds) as? Int {
             return .milliseconds(milliseconds)
@@ -99,5 +117,14 @@ public final class AppSettings {
             return nil
         }
         return CGPoint(x: x, y: y)
+    }
+
+    private static func loadPanelSize(from defaults: UserDefaults) -> CGSize? {
+        guard let width = defaults.object(forKey: Key.panelWidth) as? Double,
+              let height = defaults.object(forKey: Key.panelHeight) as? Double
+        else {
+            return nil
+        }
+        return CGSize(width: width, height: height)
     }
 }

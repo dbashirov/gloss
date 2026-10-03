@@ -13,7 +13,7 @@ final class TranslatorPanel: NSPanel {
     init() {
         super.init(
             contentRect: .zero,
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless, .resizable, .nonactivatingPanel],
             backing: .buffered,
             defer: true
         )

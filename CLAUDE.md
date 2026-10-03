@@ -87,11 +87,17 @@ Always use `make`, never raw `swift test`:
 
 - An accessory app still needs `NSApp.mainMenu` (`MainMenu.swift`), otherwise text fields get
   no Cmd+C/V/A and windows no Cmd+W.
-- `TranslatorPanel` is `.borderless` + `.nonactivatingPanel` with `canBecomeKey = true`; Esc is
+- `TranslatorPanel` is `.borderless` + `.resizable` + `.nonactivatingPanel` with
+  `canBecomeKey = true`; Esc is
   caught in `sendEvent(_:)` (the field editor would take it for completion) and Cmd+W in
   `performClose(_:)`. Dragging uses `WindowDragGesture` in `HeaderView`.
 - `PanelController` defers resizing to the next main-actor turn: the hosting view reports size
   changes mid-layout. Own placements are told from user drags with a 1 pt tolerance.
+- The panel follows its content (`hostingView.sizingOptions = [.intrinsicContentSize]`) until
+  the user resizes it by an edge (live resize) or `ResizeGrip`; then `AppSettings.panelSize`
+  is set and the sizing options are cleared so the content's size does not fight the user's.
+  The grip drag is tracked by the screen cursor (`NSEvent.mouseLocation`): the panel moves
+  under the gesture while it resizes.
 - The status item menu is attached only while shown; kept, it would swallow left clicks.
 - Translation framework objects are not `Sendable`: create them per call; the
   `.translationTask` action is a `nonisolated` method; the pack download dialog needs an

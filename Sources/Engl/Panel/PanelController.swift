@@ -1,13 +1,16 @@
 import AppKit
 import EnglCore
+import SwiftUI
 
 /// PanelController shows the translator panel either as a popup at the cursor, closed by
 /// Esc, an outside click or another app's activation, or pinned at a saved position
-/// and closed only by its close button or Cmd+W.
+/// and closed only by its close button or Cmd+W. The panel follows its content until
+/// the user resizes it by an edge or the corner grip; that size is kept.
 @MainActor
 final class PanelController: NSObject, NSWindowDelegate {
-    static let width: CGFloat = 380
-    static let maxHeight: CGFloat = 480
+    static let autoWidth: CGFloat = 380
+    static let autoMaxHeight: CGFloat = 480
+    static let minSize = CGSize(width: 300, height: 160)
 
     private let panel = TranslatorPanel()
     private let settings: AppSettings
@@ -26,7 +29,9 @@ final class PanelController: NSObject, NSWindowDelegate {
             togglePin: { [weak self] in self?.togglePin() },
             close: { [weak self] in self?.hide() },
             copy: { [weak self] text in self?.copy(text) },
-            perform: { [weak self] action in self?.onErrorAction(action) }
+            perform: { [weak self] action in self?.onErrorAction(action) },
+            resize: { [weak self] phase in self?.resizeByGrip(phase) },
+            resetSize: { [weak self] in self?.resetSize() }
         )
     ))
 
@@ -37,6 +42,8 @@ final class PanelController: NSObject, NSWindowDelegate {
     private var popupCursor: CGPoint?
     private var placedFrame: CGRect?
     private var isResizeScheduled = false
+    /// The panel frame and the screen cursor when the grip drag began.
+    private var gripStart: (frame: CGRect, cursor: CGPoint)?
 
     init(
         settings: AppSettings,
@@ -51,11 +58,12 @@ final class PanelController: NSObject, NSWindowDelegate {
         self.watcher = watcher
         self.onErrorAction = onErrorAction
         super.init()
-        hostingView.sizingOptions = [.intrinsicContentSize]
+        updateSizingOptions()
         hostingView.onContentSizeChange = { [weak self] in
             self?.scheduleResize()
         }
         panel.contentView = hostingView
+        panel.minSize = Self.minSize
         panel.delegate = self
         panel.onCancel = { [weak self] in
             self?.dismissPopup()
@@ -91,6 +99,27 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
     }
 
+    // a drag of a panel edge switches the panel to the size chosen by the user
+    func windowWillStartLiveResize(_ notification: Notification) {
+        popupCursor = nil
+        settings.panelSize = panel.frame.size
+        updateSizingOptions()
+    }
+
+    func windowDidResize(_ notification: Notification) {
+        guard panel.inLiveResize else {
+            return
+        }
+        settings.panelSize = panel.frame.size
+    }
+
+    func windowDidEndLiveResize(_ notification: Notification) {
+        settings.panelSize = panel.frame.size
+        if settings.isPinned {
+            savePinnedPosition()
+        }
+    }
+
     /// Hides the popup; a pinned panel stays until its close button or Cmd+W.
     func dismissPopup() {
         guard !settings.isPinned else {
@@ -111,6 +140,49 @@ final class PanelController: NSObject, NSWindowDelegate {
             savePinnedPosition()
         }
         updateMonitors()
+    }
+
+    private func resizeByGrip(_ phase: PanelResizePhase) {
+        guard phase == .changed else {
+            gripStart = nil
+            return
+        }
+        let cursor = NSEvent.mouseLocation
+        if gripStart == nil {
+            gripStart = (panel.frame, cursor)
+            popupCursor = nil
+        }
+        guard let gripStart,
+              let visibleFrame = visibleFrame(near: PopupGeometry.topLeft(of: gripStart.frame))
+        else {
+            return
+        }
+        let frame = PopupGeometry.resizedFrame(
+            gripStart.frame,
+            dragStart: gripStart.cursor,
+            dragCurrent: cursor,
+            minSize: Self.minSize,
+            visibleFrame: visibleFrame
+        )
+        settings.panelSize = frame.size
+        updateSizingOptions()
+        place(frame)
+    }
+
+    private func resetSize() {
+        settings.panelSize = nil
+        updateSizingOptions()
+        scheduleResize()
+    }
+
+    // the content's own size would fight a size chosen by the user
+    private func updateSizingOptions() {
+        let options: NSHostingSizingOptions = settings.panelSize == nil
+            ? [.intrinsicContentSize]
+            : []
+        if hostingView.sizingOptions != options {
+            hostingView.sizingOptions = options
+        }
     }
 
     private func savePinnedPosition() {
@@ -158,8 +230,15 @@ final class PanelController: NSObject, NSWindowDelegate {
     }
 
     private func contentSize() -> CGSize {
+        if let panelSize = settings.panelSize {
+            let screen = visibleFrame(near: settings.pinnedTopLeft ?? NSEvent.mouseLocation)
+            guard let screen else {
+                return panelSize
+            }
+            return PopupGeometry.fit(size: panelSize, minSize: Self.minSize, visibleFrame: screen)
+        }
         let fitting = hostingView.fittingSize
-        return CGSize(width: Self.width, height: min(fitting.height, Self.maxHeight))
+        return CGSize(width: Self.autoWidth, height: min(fitting.height, Self.autoMaxHeight))
     }
 
     private func place(_ frame: CGRect) {
@@ -189,7 +268,7 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     private func fitContent() {
         isResizeScheduled = false
-        guard panel.isVisible else {
+        guard panel.isVisible, settings.panelSize == nil else {
             return
         }
         let size = contentSize()

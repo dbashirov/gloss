@@ -33,6 +33,7 @@ struct AppSettingsTests {
         #expect(settings.doubleCopyInterval == DoubleCopyDetector.defaultInterval)
         #expect(!settings.isPinned)
         #expect(settings.pinnedTopLeft == nil)
+        #expect(settings.panelSize == nil)
     }
 
     @Test func reloadsSavedValues() throws {
@@ -44,12 +45,37 @@ struct AppSettingsTests {
         settings.doubleCopyInterval = .milliseconds(800)
         settings.isPinned = true
         settings.pinnedTopLeft = CGPoint(x: 120.5, y: -40)
+        settings.panelSize = CGSize(width: 520.5, height: 640)
 
         let reloaded = AppSettings(defaults: try makeDefaults(suiteName))
         #expect(!reloaded.doubleCopyEnabled)
         #expect(reloaded.doubleCopyInterval == .milliseconds(800))
         #expect(reloaded.isPinned)
         #expect(reloaded.pinnedTopLeft == CGPoint(x: 120.5, y: -40))
+        #expect(reloaded.panelSize == CGSize(width: 520.5, height: 640))
+    }
+
+    @Test func clearsPanelSize() throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let defaults = try makeDefaults(suiteName)
+        let settings = AppSettings(defaults: defaults)
+        settings.panelSize = CGSize(width: 500, height: 400)
+
+        settings.panelSize = nil
+
+        #expect(AppSettings(defaults: try makeDefaults(suiteName)).panelSize == nil)
+        #expect(defaults.object(forKey: AppSettings.Key.panelWidth) == nil)
+        #expect(defaults.object(forKey: AppSettings.Key.panelHeight) == nil)
+    }
+
+    @Test func ignoresIncompletePanelSize() throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let defaults = try makeDefaults(suiteName)
+        defaults.set(500.0, forKey: AppSettings.Key.panelWidth)
+
+        #expect(AppSettings(defaults: defaults).panelSize == nil)
     }
 
     @Test func clearsPinnedTopLeft() throws {

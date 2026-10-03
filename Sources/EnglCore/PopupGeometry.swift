@@ -37,6 +37,36 @@ public enum PopupGeometry {
         return clamp(origin: origin, size: size, visibleFrame: visibleFrame)
     }
 
+    /// Returns the frame of a panel resized by dragging its bottom-right corner from
+    /// `dragStart` to `dragCurrent`: the top-left corner stays, the size is kept between
+    /// `minSize` and the room left in the visible frame.
+    public static func resizedFrame(
+        _ start: CGRect,
+        dragStart: CGPoint,
+        dragCurrent: CGPoint,
+        minSize: CGSize,
+        visibleFrame: CGRect
+    ) -> CGRect {
+        let maxWidth = max(visibleFrame.maxX - start.minX, minSize.width)
+        let maxHeight = max(start.maxY - visibleFrame.minY, minSize.height)
+        // y grows upwards: dragging down makes the panel taller
+        let width = start.width + dragCurrent.x - dragStart.x
+        let height = start.height + dragStart.y - dragCurrent.y
+        let size = CGSize(
+            width: min(max(width, minSize.width), maxWidth),
+            height: min(max(height, minSize.height), maxHeight)
+        )
+        return CGRect(origin: CGPoint(x: start.minX, y: start.maxY - size.height), size: size)
+    }
+
+    /// Fits a saved panel size into the visible frame, keeping it at least `minSize`.
+    public static func fit(size: CGSize, minSize: CGSize, visibleFrame: CGRect) -> CGSize {
+        CGSize(
+            width: max(min(size.width, visibleFrame.width), minSize.width),
+            height: max(min(size.height, visibleFrame.height), minSize.height)
+        )
+    }
+
     /// Returns the origin of a panel whose top-left corner is pinned at `topLeft`:
     /// the height changes with the content, the top edge stays.
     public static func origin(topLeft: CGPoint, size: CGSize, visibleFrame: CGRect?) -> CGPoint {
