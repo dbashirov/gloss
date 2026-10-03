@@ -602,14 +602,19 @@ add-generic-password` до появления окна настроек в Task 
 - [x] run tests - must pass before next task
 
 ### Task 14: Verify acceptance criteria
-- [ ] verify all requirements from Overview are implemented
-- [ ] verify edge cases are handled (пароль из менеджера паролей, пустой буфер, картинка
+- [x] verify all requirements from Overview are implemented (аудит кода: трей + `.accessory`,
+  двойной Cmd+C и левый клик, карточка/текст, попап у курсора и 📌, Yandex + Apple через
+  `TranslationProvider`; визуальная проверка — вручную, см. Post-Completion)
+- [x] verify edge cases are handled (пароль из менеджера паролей, пустой буфер, картинка
   в буфере, очень длинный текст, нет сети, нет ключа, нет языкового пакета, доступ
-  к буферу запрещён)
-- [ ] run full test suite: `make test`
-- [ ] собрать и запустить `.app`: `make app && make run`
-- [ ] verify test coverage meets project standard (`swift test --enable-code-coverage`,
-  `EnglCore` ≥ 80%)
+  к буферу запрещён) — покрыты тестами; ➕ исправлено: при `.alwaysDeny` двойной Cmd+C
+  молча ничего не делал — добавлен `ClipboardWatcher.onUnreadableCopy`, панель
+  открывается с подсказкой (+2 теста); реальные приложения/режимы доступа — вручную
+- [x] run full test suite: `make test` (200 тестов)
+- [x] собрать и запустить `.app`: `make app && make run` (smoke: процесс жив, затем
+  остановлен; UI не проверялся — нет человека)
+- [x] verify test coverage meets project standard (`make coverage`: `EnglCore` 94.95%
+  строк)
 
 ### Task 15: [Final] Update documentation
 - [ ] создать `README.md`: что это, сборка (`make app`, `make install`), получение ключа

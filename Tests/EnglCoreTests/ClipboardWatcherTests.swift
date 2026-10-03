@@ -16,6 +16,7 @@ private final class Harness {
     let clock = ManualClock()
     let watcher: ClipboardWatcher
     private(set) var received: [String] = []
+    private(set) var unreadableCopies = 0
 
     init(changeCount: Int = 0, interval: Duration = DoubleCopyDetector.defaultInterval) {
         pasteboard = FakePasteboard(changeCount: changeCount)
@@ -27,6 +28,7 @@ private final class Harness {
             now: { clock.now }
         )
         watcher.onDoubleCopy = { [unowned self] text in received.append(text) }
+        watcher.onUnreadableCopy = { [unowned self] in unreadableCopies += 1 }
     }
 
     /// Copies `text` and lets the watcher see it after `milliseconds`.
@@ -135,6 +137,7 @@ struct ClipboardWatcherTests {
         harness.copy(nil)
 
         #expect(harness.received.isEmpty)
+        #expect(harness.unreadableCopies == 0)
         #expect(harness.pasteboard.stringReads == 0)
     }
 
@@ -146,6 +149,29 @@ struct ClipboardWatcherTests {
         harness.copy(" \n\t")
 
         #expect(harness.received.isEmpty)
+        #expect(harness.unreadableCopies == 0)
+    }
+
+    @Test func unreadableTextIsReported() {
+        let harness = Harness()
+        harness.watcher.start()
+
+        harness.copy(nil, types: [PasteboardType.string])
+        harness.copy(nil, types: [PasteboardType.string])
+
+        #expect(harness.received.isEmpty)
+        #expect(harness.unreadableCopies == 1)
+        #expect(harness.pasteboard.stringReads == 1)
+    }
+
+    @Test func singleUnreadableCopyIsNotReported() {
+        let harness = Harness()
+        harness.watcher.start()
+
+        harness.copy(nil, types: [PasteboardType.string])
+
+        #expect(harness.unreadableCopies == 0)
+        #expect(harness.pasteboard.stringReads == 0)
     }
 
     @Test(arguments: [PasteboardType.concealed, PasteboardType.transient])

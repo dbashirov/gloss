@@ -29,6 +29,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         environment.watcher.onDoubleCopy = { [weak panel] text in
             panel?.showTranslation(of: text)
         }
+        // with paste access denied the copy is invisible: show the panel with the hint
+        environment.watcher.onUnreadableCopy = { [weak panel, weak environment] in
+            guard environment?.pasteboard.accessBehavior == .alwaysDeny else {
+                return
+            }
+            panel?.showManualInput()
+        }
         statusItem = StatusItemController(
             settings: environment.settings,
             onManualInput: { [weak panel] in

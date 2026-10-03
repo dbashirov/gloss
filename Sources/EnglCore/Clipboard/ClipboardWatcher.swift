@@ -6,6 +6,8 @@ public final class ClipboardWatcher {
 
     /// Receives the copied text after a double copy.
     public var onDoubleCopy: ((String) -> Void)?
+    /// Called after a double copy of text that could not be read, e.g. paste access is denied.
+    public var onUnreadableCopy: (() -> Void)?
 
     public var interval: Duration {
         get { detector.interval }
@@ -94,10 +96,14 @@ public final class ClipboardWatcher {
         guard detector.register(delta: delta, at: now(), isConcealed: isConcealed) else {
             return
         }
-        guard types.contains(PasteboardType.string),
-              let text = pasteboard.string(),
-              !text.allSatisfy(\.isWhitespace)
-        else {
+        guard types.contains(PasteboardType.string) else {
+            return
+        }
+        guard let text = pasteboard.string() else {
+            onUnreadableCopy?()
+            return
+        }
+        guard !text.allSatisfy(\.isWhitespace) else {
             return
         }
         onDoubleCopy?(text)
