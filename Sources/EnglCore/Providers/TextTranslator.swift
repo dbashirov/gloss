@@ -39,9 +39,3 @@ public struct SystemTextTranslator: TextTranslator {
         return try await session.translate(text).targetText
     }
 }
-
-extension Language {
-    public var locale: Locale.Language {
-        Locale.Language(identifier: rawValue)
-    }
-}

@@ -8,18 +8,15 @@ final class StatusItemController: NSObject {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let settings: AppSettings
     private let onManualInput: () -> Void
-    private let onDoubleCopyToggle: () -> Void
     private let onOpenSettings: () -> Void
 
     init(
         settings: AppSettings,
         onManualInput: @escaping () -> Void,
-        onDoubleCopyToggle: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
     ) {
         self.settings = settings
         self.onManualInput = onManualInput
-        self.onDoubleCopyToggle = onDoubleCopyToggle
         self.onOpenSettings = onOpenSettings
         super.init()
         configureButton()
@@ -84,7 +81,6 @@ final class StatusItemController: NSObject {
 
     @objc private func toggleDoubleCopy() {
         settings.doubleCopyEnabled.toggle()
-        onDoubleCopyToggle()
     }
 
     @objc private func openSettings() {

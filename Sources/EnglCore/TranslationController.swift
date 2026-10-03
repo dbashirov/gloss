@@ -33,11 +33,8 @@ public final class TranslationController {
             let outcome: State
             do {
                 outcome = .result(try await router.route(query))
-            } catch let error as ProviderError {
-                outcome = .failed(error)
             } catch {
-                // includes a CancellationError of a request nobody cancelled
-                outcome = .failed(.invalidResponse)
+                outcome = .failed(ProviderError(mapping: error))
             }
             // a cancelled request may still finish: its answer is stale
             guard !Task.isCancelled else {

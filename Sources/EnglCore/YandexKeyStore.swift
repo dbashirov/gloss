@@ -15,10 +15,12 @@ public struct YandexKeyStore: Sendable {
         try secrets.read(YandexDictionaryProvider.keyAccount) ?? ""
     }
 
-    /// Stores the trimmed key; an empty key removes the stored one.
-    public func save(_ key: String) async throws {
+    /// Stores the trimmed key and returns it; an empty key removes the stored one.
+    @discardableResult
+    public func save(_ key: String) async throws -> String {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         try secrets.write(trimmed, account: YandexDictionaryProvider.keyAccount)
         await router.invalidate()
+        return trimmed
     }
 }

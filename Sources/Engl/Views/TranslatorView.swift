@@ -3,8 +3,6 @@ import SwiftUI
 
 /// TranslatorView is the panel content: the query field and the translation state.
 struct TranslatorView: View {
-    static let pasteAccessMessage = "Доступ к буферу обмена запрещён — двойной Cmd+C не работает"
-
     @Bindable var model: PanelModel
     let translator: TranslationController
     let settings: AppSettings
@@ -12,7 +10,6 @@ struct TranslatorView: View {
     let actions: PanelActions
 
     @FocusState private var isQueryFocused: Bool
-    // the @State macro needs SwiftUIMacros, which Command Line Tools lack
     private let resultHeight = State(initialValue: CGFloat(0))
     // everything but the result area: header, field, notices, footer and paddings
     private let chromeHeight = State(initialValue: CGFloat(150))
@@ -32,7 +29,7 @@ struct TranslatorView: View {
                 .onSubmit { translator.translate(model.query) }
             if model.isPasteAccessDenied {
                 NoticeView(
-                    message: Self.pasteAccessMessage,
+                    message: "Доступ к буферу обмена запрещён — двойной Cmd+C не работает",
                     action: .allowPasteboardAccess,
                     perform: actions.perform
                 )
@@ -88,45 +85,18 @@ struct TranslatorView: View {
             Text("Введите слово или фразу и нажмите Enter")
                 .foregroundStyle(.secondary)
         case .loading:
-            HStack(spacing: 8) {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Перевожу…")
-                    .foregroundStyle(.secondary)
-            }
+            LoadingLabel("Перевожу…")
         case .result(let routed):
             switch routed.result {
             case .dictionary(let entry):
                 DictionaryCardView(entry: entry) {
-                    let language = QueryClassifier.classify(entry.word).source
-                    speech.speak(entry.word, language: language)
+                    speech.speak(entry.word, language: entry.language)
                 }
             case .text(let translation):
                 TextResultView(translation: translation)
             }
         case .failed(let error):
             NoticeView(message: error.message, action: error.action, perform: actions.perform)
-        }
-    }
-}
-
-/// NoticeView shows a problem and the action that fixes it.
-struct NoticeView: View {
-    let message: String
-    let action: ErrorAction?
-    let perform: (ErrorAction) -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(message, systemImage: "exclamationmark.triangle")
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            if let action {
-                Button(action.title) {
-                    perform(action)
-                }
-                .controlSize(.small)
-            }
         }
     }
 }

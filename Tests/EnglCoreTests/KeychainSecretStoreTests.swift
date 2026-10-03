@@ -3,7 +3,7 @@ import Security
 import Testing
 @testable import EnglCore
 
-private let account = "yandex-dictionary"
+private let account = YandexDictionaryProvider.keyAccount
 
 /// Returns a store with a service unique to this run so tests never touch real app items.
 private func makeStore() -> KeychainSecretStore {

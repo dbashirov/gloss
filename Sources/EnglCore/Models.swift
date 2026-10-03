@@ -1,5 +1,21 @@
+import Foundation
+
 public enum Language: String, Sendable {
     case en, ru
+
+    public var locale: Locale.Language {
+        Locale.Language(identifier: rawValue)
+    }
+
+    /// BCP 47 code for the speech voice.
+    public var voiceCode: String {
+        switch self {
+        case .en:
+            "en-US"
+        case .ru:
+            "ru-RU"
+        }
+    }
 }
 
 public enum QueryKind: Sendable {

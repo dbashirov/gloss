@@ -3,7 +3,7 @@ import Foundation
 import Testing
 @testable import EnglCore
 
-/// makeSuiteName returns a unique absolute-path suite: cfprefsd leaves an empty plist
+/// Returns a unique absolute-path suite: cfprefsd leaves an empty plist
 /// in ~/Library/Preferences for a removed named suite, a temp directory is safe to drop.
 private func makeSuiteName() -> String {
     FileManager.default.temporaryDirectory
@@ -30,7 +30,7 @@ struct AppSettingsTests {
         let settings = AppSettings(defaults: try makeDefaults(suiteName))
 
         #expect(settings.doubleCopyEnabled)
-        #expect(settings.doubleCopyInterval == 0.5)
+        #expect(settings.doubleCopyInterval == DoubleCopyDetector.defaultInterval)
         #expect(!settings.isPinned)
         #expect(settings.pinnedTopLeft == nil)
     }
@@ -41,13 +41,13 @@ struct AppSettingsTests {
         let settings = AppSettings(defaults: try makeDefaults(suiteName))
 
         settings.doubleCopyEnabled = false
-        settings.doubleCopyInterval = 0.8
+        settings.doubleCopyInterval = .milliseconds(800)
         settings.isPinned = true
         settings.pinnedTopLeft = CGPoint(x: 120.5, y: -40)
 
         let reloaded = AppSettings(defaults: try makeDefaults(suiteName))
         #expect(!reloaded.doubleCopyEnabled)
-        #expect(reloaded.doubleCopyInterval == 0.8)
+        #expect(reloaded.doubleCopyInterval == .milliseconds(800))
         #expect(reloaded.isPinned)
         #expect(reloaded.pinnedTopLeft == CGPoint(x: 120.5, y: -40))
     }
@@ -99,5 +99,52 @@ struct AppSettingsTests {
         AppSettings(defaults: try makeDefaults(first)).isPinned = true
 
         #expect(!AppSettings(defaults: try makeDefaults(second)).isPinned)
+    }
+
+    @Test func migratesLegacyIntervalInSeconds() throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let defaults = try makeDefaults(suiteName)
+        defaults.set(0.7, forKey: AppSettings.Key.legacyDoubleCopyInterval)
+
+        let settings = AppSettings(defaults: defaults)
+
+        #expect(settings.doubleCopyInterval == .milliseconds(700))
+        #expect(defaults.object(forKey: AppSettings.Key.legacyDoubleCopyInterval) == nil)
+        #expect(defaults.integer(forKey: AppSettings.Key.doubleCopyIntervalMilliseconds) == 700)
+        #expect(AppSettings(defaults: defaults).doubleCopyInterval == .milliseconds(700))
+    }
+
+    @Test func storesIntervalInMilliseconds() throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let defaults = try makeDefaults(suiteName)
+        let settings = AppSettings(defaults: defaults)
+
+        settings.doubleCopyInterval = .milliseconds(650)
+
+        #expect(defaults.integer(forKey: AppSettings.Key.doubleCopyIntervalMilliseconds) == 650)
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func reportsDoubleCopyChangesOfOneTurnOnce() async throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let settings = AppSettings(defaults: try makeDefaults(suiteName))
+        let (changes, continuation) = AsyncStream.makeStream(of: (Bool, Duration).self)
+        settings.observeDoubleCopy {
+            continuation.yield((settings.doubleCopyEnabled, settings.doubleCopyInterval))
+        }
+        var iterator = changes.makeAsyncIterator()
+
+        settings.doubleCopyEnabled = false
+        settings.doubleCopyInterval = .milliseconds(800)
+        let first = try #require(await iterator.next())
+        settings.isPinned = true
+        settings.doubleCopyEnabled = true
+        let second = try #require(await iterator.next())
+
+        #expect(first == (false, Duration.milliseconds(800)))
+        #expect(second == (true, Duration.milliseconds(800)))
     }
 }

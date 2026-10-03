@@ -8,6 +8,13 @@ public protocol SecretStore: Sendable {
     func write(_ value: String?, account: String) throws
 }
 
+extension SecretStore {
+    /// Returns the value a write stores: `nil` for a missing or empty one.
+    public static func storedValue(_ value: String?) -> String? {
+        value?.isEmpty == false ? value : nil
+    }
+}
+
 /// CachedSecretStore remembers what it has read or written, so the store behind it is
 /// asked once per account: Keychain may show an access prompt on every read of an item
 /// created by a previous build of an ad-hoc signed app. Failed reads are not cached.
@@ -37,12 +44,12 @@ public final class CachedSecretStore: SecretStore {
 
     public func write(_ value: String?, account: String) throws {
         try base.write(value, account: account)
-        let stored = value?.isEmpty == false ? value : nil
-        cache.withLock { $0[account] = .some(stored) }
+        cache.withLock { $0[account] = .some(Self.storedValue(value)) }
     }
 }
 
-/// InMemorySecretStore is a process-local `SecretStore` for tests and previews.
+/// InMemorySecretStore is a process-local `SecretStore`, e.g. for checking a key
+/// without storing it.
 public final class InMemorySecretStore: SecretStore {
     private let values: Mutex<[String: String]>
 
@@ -55,12 +62,6 @@ public final class InMemorySecretStore: SecretStore {
     }
 
     public func write(_ value: String?, account: String) {
-        values.withLock { stored in
-            if let value, !value.isEmpty {
-                stored[account] = value
-            } else {
-                stored[account] = nil
-            }
-        }
+        values.withLock { $0[account] = Self.storedValue(value) }
     }
 }

@@ -2,20 +2,6 @@ import Foundation
 import Observation
 import os
 
-/// SettingsNote is a one-line outcome shown under a settings control.
-public struct SettingsNote: Equatable, Sendable {
-    public let text: String
-    public let isError: Bool
-
-    public static func success(_ text: String) -> SettingsNote {
-        SettingsNote(text: text, isError: false)
-    }
-
-    public static func failure(_ text: String) -> SettingsNote {
-        SettingsNote(text: text, isError: true)
-    }
-}
-
 /// YandexKeySettings is the state of the API key field in the settings window:
 /// the draft, the outcome of the last save or check and the check in progress.
 @MainActor
@@ -31,11 +17,14 @@ public final class YandexKeySettings {
     @ObservationIgnored private let store: YandexKeyStore
     @ObservationIgnored private let keyCheck: YandexKeyCheck
     @ObservationIgnored private let logger = Logger(
-        subsystem: "com.dbashirov.engl",
+        subsystem: AppIdentity.bundleID,
         category: "settings"
     )
     @ObservationIgnored private(set) var checkTask: Task<Void, Never>?
     @ObservationIgnored private(set) var saveTask: Task<Void, Never>?
+    /// The draft as `load()` or a finished save set it; `nil` from the start of a save,
+    /// so what the user typed is never replaced.
+    @ObservationIgnored private var syncedDraft: String?
 
     public init(store: YandexKeyStore, keyCheck: YandexKeyCheck) {
         self.store = store
@@ -47,6 +36,7 @@ public final class YandexKeySettings {
     }
 
     /// Reads the stored key into the draft and drops the state of the previous visit.
+    /// A save still in flight replaces the value read here when it finishes.
     public func load() {
         checkTask?.cancel()
         isChecking = false
@@ -61,6 +51,7 @@ public final class YandexKeySettings {
             isLoaded = false
             note = .failure("Не удалось прочитать ключ из Связки ключей")
         }
+        syncedDraft = draft
     }
 
     public func save() {
@@ -68,23 +59,25 @@ public final class YandexKeySettings {
             return
         }
         let key = draft
+        syncedDraft = nil
         // saves run one after another, so the last one pressed is the one stored
         let previous = saveTask
         saveTask = Task {
             await previous?.value
+            let saved: String
             do {
-                try await store.save(key)
+                saved = try await store.save(key)
             } catch {
                 let reason = error.localizedDescription
                 logger.error("saving the key failed: \(reason, privacy: .public)")
                 note = .failure("Не удалось сохранить ключ в Связку ключей")
                 return
             }
-            let saved = key.trimmingCharacters(in: .whitespacesAndNewlines)
             isLoaded = true
-            // the user may have edited the field while the key was being saved
-            if draft == key {
+            // keep what the user typed meanwhile, but not a value read before the save ended
+            if draft == key || draft == syncedDraft {
                 draft = saved
+                syncedDraft = saved
             }
             note = .success(saved.isEmpty ? "Ключ удалён" : "Ключ сохранён")
         }
@@ -101,11 +94,8 @@ public final class YandexKeySettings {
             do {
                 try await keyCheck.check(key)
                 outcome = .success("Ключ действителен")
-            } catch let error as ProviderError {
-                outcome = .failure(error.message)
             } catch {
-                // includes a CancellationError of a check nobody cancelled
-                outcome = .failure(ProviderError.invalidResponse.message)
+                outcome = .failure(ProviderError(mapping: error).message)
             }
             // a newer check or a reload has taken over
             guard !Task.isCancelled else {

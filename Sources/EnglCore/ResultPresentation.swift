@@ -2,17 +2,19 @@ import Foundation
 
 /// ProviderInfo describes a translation source for the panel footer.
 public struct ProviderInfo: Sendable, Equatable {
+    static let yandexDictionaryURL = URL(string: "https://yandex.ru/dev/dictionary/")!
+
     public let name: String
     public let url: URL?
 
-    /// Unknown providers are shown by their identifier.
+    /// Returns the footer info; unknown providers are shown by their identifier.
     public static func info(for providerID: String) -> ProviderInfo {
         switch providerID {
         case YandexDictionaryProvider.providerID:
             // the Yandex Dictionary terms require this attribution with a link
             ProviderInfo(
                 name: "Реализовано с помощью сервиса «Яндекс.Словарь»",
-                url: URL(string: "https://yandex.ru/dev/dictionary/")
+                url: yandexDictionaryURL
             )
         case AppleTranslationProvider.providerID:
             ProviderInfo(name: "Apple Translation", url: nil)
@@ -35,6 +37,13 @@ extension RoutedResult {
     }
 }
 
+extension DictionaryEntry {
+    /// The language the word is pronounced in, told by its script.
+    public var language: Language {
+        QueryClassifier.scriptLanguage(word)
+    }
+}
+
 extension TranslationResult {
     /// The text the copy button puts on the pasteboard: all distinct dictionary
     /// translations or the translated text.
@@ -49,18 +58,6 @@ extension TranslationResult {
             return senses.joined(separator: ", ")
         case .text(let translation):
             return translation.translation
-        }
-    }
-}
-
-extension Language {
-    /// BCP 47 code for the speech voice.
-    public var voiceCode: String {
-        switch self {
-        case .en:
-            "en-US"
-        case .ru:
-            "ru-RU"
         }
     }
 }

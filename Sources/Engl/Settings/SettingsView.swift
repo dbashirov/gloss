@@ -1,4 +1,3 @@
-import AppKit
 import EnglCore
 import SwiftUI
 
@@ -6,10 +5,10 @@ import SwiftUI
 struct SettingsView: View {
     static let intervalRange = DoubleCopyDetector.intervalRange.lowerBound.milliseconds
         ... DoubleCopyDetector.intervalRange.upperBound.milliseconds
+    static let intervalStep = 50.0
 
     @Bindable var model: SettingsModel
     @Bindable var settings: AppSettings
-    let onDoubleCopyChange: () -> Void
 
     var body: some View {
         Form {
@@ -27,12 +26,6 @@ struct SettingsView: View {
         }
         .formStyle(.grouped)
         .frame(width: 500, height: 620)
-        .onChange(of: settings.doubleCopyEnabled) {
-            onDoubleCopyChange()
-        }
-        .onChange(of: settings.doubleCopyInterval) {
-            onDoubleCopyChange()
-        }
     }
 
     @ViewBuilder
@@ -50,7 +43,7 @@ struct SettingsView: View {
                 Caption("Разрешите запуск Engl в «Объектах входа»")
                 Spacer()
                 Button("Открыть") {
-                    model.openLoginItems()
+                    SystemSettingsLink.loginItems.open()
                 }
             }
         case .disabled, .enabled:
@@ -64,7 +57,11 @@ struct SettingsView: View {
         Toggle("Перевод по двойному Cmd+C", isOn: $settings.doubleCopyEnabled)
         LabeledContent("Интервал между нажатиями") {
             HStack {
-                Slider(value: intervalMilliseconds, in: Self.intervalRange, step: 50)
+                Slider(
+                    value: intervalMilliseconds,
+                    in: Self.intervalRange,
+                    step: Self.intervalStep
+                )
                 Text("\(Int(intervalMilliseconds.wrappedValue)) мс")
                     .monospacedDigit()
                     .frame(width: 60, alignment: .trailing)
@@ -75,9 +72,8 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var pasteAccess: some View {
-        let access = PasteAccessDescription(model.pasteAccess)
-        LabeledContent("Доступ к буферу обмена", value: access.status)
-        if let hint = access.hint {
+        LabeledContent("Доступ к буферу обмена", value: model.pasteAccess.status)
+        if let hint = model.pasteAccess.hint {
             HStack {
                 Caption(hint)
                 Spacer()
@@ -90,63 +86,14 @@ struct SettingsView: View {
 
     private var intervalMilliseconds: Binding<Double> {
         Binding(
-            get: { settings.doubleCopyInterval * 1000 },
-            set: { settings.doubleCopyInterval = $0 / 1000 }
+            get: { settings.doubleCopyInterval.milliseconds },
+            set: { settings.doubleCopyInterval = .milliseconds($0) }
         )
     }
 }
 
-/// YandexKeyView edits, saves and checks the Yandex Dictionary API key.
-struct YandexKeyView: View {
-    @Bindable var key: YandexKeySettings
-
-    var body: some View {
-        SecureField("Ключ API Яндекс.Словаря", text: $key.draft)
-            .onSubmit { key.save() }
-        HStack {
-            Button("Сохранить") {
-                key.save()
-            }
-            .disabled(!key.canSave)
-            Button("Проверить") {
-                key.check()
-            }
-            .disabled(key.isChecking)
-            if key.isChecking {
-                ProgressView()
-                    .controlSize(.small)
-            }
-            Spacer()
-            Link("Получить бесплатный ключ", destination: SettingsModel.keyURL)
-        }
-        SettingsNoteView(note: key.note)
-    }
-}
-
-/// PasteAccessDescription explains `NSPasteboard.AccessBehavior` for double Cmd+C.
-struct PasteAccessDescription {
-    let status: String
-    let hint: String?
-
-    init(_ behavior: NSPasteboard.AccessBehavior) {
-        switch behavior {
-        case .alwaysAllow:
-            status = "Разрешён"
-            hint = nil
-        case .alwaysDeny:
-            status = "Запрещён"
-            hint = "Двойной Cmd+C не сможет прочитать текст: разрешите Engl в "
-                + "«Конфиденциальность и безопасность → Вставка из других приложений»"
-        default:
-            status = "Спрашивать"
-            hint = "При первом двойном Cmd+C система спросит разрешение — выберите "
-                + "«Разрешать всегда»"
-        }
-    }
-}
-
 /// Caption is secondary explanatory text under a control.
-struct Caption: View {
+private struct Caption: View {
     let text: String
 
     init(_ text: String) {
@@ -158,20 +105,6 @@ struct Caption: View {
             .font(.caption)
             .foregroundStyle(.secondary)
             .fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// SettingsNoteView shows the outcome of the last action, if any.
-struct SettingsNoteView: View {
-    let note: SettingsNote?
-
-    var body: some View {
-        if let note {
-            Label(note.text, systemImage: note.isError ? "exclamationmark.triangle" : "checkmark")
-                .font(.caption)
-                .foregroundStyle(note.isError ? .red : .secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
     }
 }
 

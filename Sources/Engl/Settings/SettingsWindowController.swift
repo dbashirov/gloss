@@ -10,13 +10,9 @@ final class SettingsWindowController: NSObject {
     private let window: NSWindow
     private var activationObserver: (any NSObjectProtocol)?
 
-    init(model: SettingsModel, settings: AppSettings, onDoubleCopyChange: @escaping () -> Void) {
+    init(model: SettingsModel, settings: AppSettings) {
         self.model = model
-        let content = NSHostingController(rootView: SettingsView(
-            model: model,
-            settings: settings,
-            onDoubleCopyChange: onDoubleCopyChange
-        ))
+        let content = NSHostingController(rootView: SettingsView(model: model, settings: settings))
         window = NSWindow(contentViewController: content)
         window.title = "Настройки Engl"
         window.styleMask = [.titled, .closable]

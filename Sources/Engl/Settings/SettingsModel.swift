@@ -1,5 +1,5 @@
-import AppKit
 import EnglCore
+import Foundation
 import Observation
 import ServiceManagement
 import Translation
@@ -9,15 +9,15 @@ import Translation
 @MainActor
 @Observable
 final class SettingsModel {
-    static let keyURL = URL(string: "https://yandex.ru/dev/dictionary/keys/get/?service=dict")!
-
     private(set) var launchState = LaunchAtLoginState.unavailable
     private(set) var launchNote: SettingsNote?
-    private(set) var pasteAccess = NSPasteboard.AccessBehavior.default
+    private(set) var pasteAccess = PasteAccess.ask
     private(set) var packState: LanguagePackState?
     private(set) var packNote: SettingsNote?
     private(set) var isDownloadingPack = false
     private(set) var packConfiguration: TranslationSession.Configuration?
+    /// Identifies the latest download: a cancelled one may finish after a newer one started.
+    private(set) var packRequestID = 0
 
     /// Brings the settings window forward: the download dialog needs an active key window.
     @ObservationIgnored var activateWindow: () -> Void = {}
@@ -44,7 +44,7 @@ final class SettingsModel {
     /// Refreshes what the user may have changed in System Settings meanwhile.
     func refreshStatuses() {
         refreshLaunchState()
-        pasteAccess = pasteboard.accessBehavior
+        pasteAccess = pasteboard.access
         Task {
             await refreshPackState()
         }
@@ -68,22 +68,22 @@ final class SettingsModel {
         refreshLaunchState()
     }
 
-    func openLoginItems() {
-        SMAppService.openSystemSettingsLoginItems()
-    }
-
     /// Triggers the view's `.translationTask`, which shows the system download dialog.
     func downloadPack() {
         activateWindow()
         packNote = nil
         isDownloadingPack = true
+        packRequestID += 1
         packConfiguration = TranslationSession.Configuration(
             source: Language.en.locale,
             target: Language.ru.locale
         )
     }
 
-    func packDownloadFinished(failure: String?) async {
+    func packDownloadFinished(requestID: Int, failure: String?) async {
+        guard requestID == packRequestID else {
+            return
+        }
         // the task also runs on every appearance while a configuration is set
         packConfiguration = nil
         isDownloadingPack = false

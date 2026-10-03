@@ -1,66 +1,67 @@
 import Testing
 @testable import EnglCore
 
-private let word = Query(text: "run", source: .en, target: .ru, kind: .dictionary)
-private let text = TranslationResult.text(TextTranslation(source: "run", translation: "бежать"))
+private let account = YandexDictionaryProvider.keyAccount
 
 struct YandexKeyStoreTests {
     @Test func loadsStoredKey() throws {
-        let secrets = InMemorySecretStore([YandexDictionaryProvider.keyAccount: "stored"])
+        let secrets = FakeSecretStore([account: "stored"])
         let store = YandexKeyStore(secrets: secrets, router: Router(providers: []))
 
         #expect(try store.load() == "stored")
     }
 
     @Test func loadsEmptyStringWithoutKey() throws {
-        let store = YandexKeyStore(secrets: InMemorySecretStore(), router: Router(providers: []))
+        let store = YandexKeyStore(secrets: FakeSecretStore(), router: Router(providers: []))
 
         #expect(try store.load() == "")
     }
 
     @Test func savesTrimmedKey() async throws {
-        let secrets = InMemorySecretStore()
+        let secrets = FakeSecretStore()
         let store = YandexKeyStore(secrets: secrets, router: Router(providers: []))
 
-        try await store.save("  new-key\n")
+        let saved = try await store.save("  new-key\n")
 
-        #expect(secrets.read(YandexDictionaryProvider.keyAccount) == "new-key")
+        #expect(saved == "new-key")
+        #expect(secrets.value(account) == "new-key")
     }
 
     @Test(arguments: ["", "  \n"])
     func blankKeyRemovesStoredKey(key: String) async throws {
-        let secrets = InMemorySecretStore([YandexDictionaryProvider.keyAccount: "old"])
+        let secrets = FakeSecretStore([account: "old"])
         let store = YandexKeyStore(secrets: secrets, router: Router(providers: []))
 
-        try await store.save(key)
+        let saved = try await store.save(key)
 
-        #expect(secrets.read(YandexDictionaryProvider.keyAccount) == nil)
+        #expect(saved.isEmpty)
+        #expect(secrets.value(account) == nil)
     }
 
     @Test func savingInvalidatesRouterCache() async throws {
-        let provider = FakeProvider(id: "yandex", result: text)
+        let provider = FakeProvider(id: "yandex", result: runText)
         let router = Router(providers: [provider])
-        let store = YandexKeyStore(secrets: InMemorySecretStore(), router: router)
-        _ = try await router.route(word)
-        _ = try await router.route(word)
+        let store = YandexKeyStore(secrets: FakeSecretStore(), router: router)
+        _ = try await router.route(runQuery)
+        _ = try await router.route(runQuery)
         #expect(provider.calls == 1)
 
         try await store.save("new-key")
-        _ = try await router.route(word)
+        _ = try await router.route(runQuery)
 
         #expect(provider.calls == 2)
     }
 
     @Test func failedSaveKeepsRouterCache() async throws {
-        let provider = FakeProvider(id: "yandex", result: text)
+        let provider = FakeProvider(id: "yandex", result: runText)
         let router = Router(providers: [provider])
         let store = YandexKeyStore(secrets: FakeSecretStore.broken(), router: router)
-        _ = try await router.route(word)
+        _ = try await router.route(runQuery)
 
         await #expect(throws: FakeSecretStore.Failure.self) {
             try await store.save("new-key")
         }
-        _ = try await router.route(word)
+        _ = try await router.route(runQuery)
 
         #expect(provider.calls == 1)
     }

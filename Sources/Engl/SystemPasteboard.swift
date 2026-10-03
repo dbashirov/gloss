@@ -14,9 +14,20 @@ final class SystemPasteboard: PasteboardReading {
         pasteboard.types?.map(\.rawValue) ?? []
     }
 
-    /// `.alwaysDeny` means the user turned off paste access in Privacy & Security.
-    var accessBehavior: NSPasteboard.AccessBehavior {
-        pasteboard.accessBehavior
+    var access: PasteAccess {
+        switch pasteboard.accessBehavior {
+        case .alwaysAllow:
+            .allowed
+        case .alwaysDeny:
+            .denied
+        default:
+            .ask
+        }
+    }
+
+    /// Tells whether the user turned off paste access in Privacy & Security.
+    var isAccessDenied: Bool {
+        access == .denied
     }
 
     func string() -> String? {

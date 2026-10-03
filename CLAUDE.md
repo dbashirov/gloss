@@ -30,16 +30,19 @@ Always use `make`, never raw `swift test`:
 
 ## Layout
 
-- `Sources/EnglCore/` — models, `TextNormalizer`, `QueryClassifier`, `Router`,
-  `TranslationController`, `AppSettings`, `PopupGeometry`, secrets/Keychain,
-  `YandexKey{Store,Check,Settings}`, presentation helpers (`ProviderError+Message`,
-  `ResultPresentation`); `Providers/` (Yandex, Apple), `Clipboard/` (`ClipboardWatcher`,
-  `DoubleCopyDetector`, `PasteboardReading`).
+- `Sources/EnglCore/` — models (incl. `Language` codes), `TextNormalizer`, `QueryClassifier`,
+  `Router`, `TranslationController`, `AppSettings`, `AppIdentity` (bundle ID, log subsystem,
+  Keychain service), `PopupGeometry`, secrets/Keychain, `YandexKey{Store,Check,Settings}`,
+  `SettingsNote`, presentation helpers (`ProviderError+Message`, `ResultPresentation`);
+  `Providers/` (Yandex, Apple), `Clipboard/` (`ClipboardWatcher`, `DoubleCopyDetector`,
+  `PasteboardReading`, `PasteAccess`).
 - `Sources/Engl/` — `AppDelegate`, `AppEnvironment`, `MainMenu`, `StatusItemController`,
   `SystemPasteboard`; `Panel/` (`TranslatorPanel`, `PanelController`), `Views/` (panel SwiftUI),
   `Settings/` (settings window).
-- `Tests/EnglCoreTests/` — suites per type; `Fakes/`, `Helpers/` (`fixture(_:)`, `Gate`,
-  `StubURLProtocol`, tags, `UUID.v7()`), `Fixtures/` (Yandex JSON).
+- `Tests/EnglCoreTests/` — one suite per type, each in `<Type>Tests.swift`; `Fakes/`,
+  `Helpers/` (`fixture(_:)`, `Gate`, `StubURLProtocol`, tags, `UUID.v7()`, shared test data
+  `runQuery`/`sentenceQuery`/`runCard`/`runText`/`UnexpectedError` in `TestData.swift`),
+  `Fixtures/` (Yandex JSON).
 
 ## Module rules
 
@@ -60,9 +63,11 @@ Always use `make`, never raw `swift test`:
 
 - Swift Testing (`import Testing`, `@Test`, `#expect`, `#require`), `@testable import EnglCore`.
 - Every code change in `EnglCore` comes with tests; UI in `Engl` is checked manually.
-- Fakes: `FakeProvider`, `FakeHTTPClient`, `FakeTextTranslator`, `FakeSecretStore` are
-  thread-safe via `Mutex` from `Synchronization`; `FakePasteboard` is `@MainActor` like
-  `PasteboardReading`.
+- Fakes: `FakeProvider`, `FakeHTTPClient`, `FakeTextTranslator` (status per direction),
+  `FakeSecretStore` are thread-safe via `Mutex` from `Synchronization`; `FakePasteboard` is
+  `@MainActor` like `PasteboardReading`. Tests of other types use these fakes, not
+  production stores such as `InMemorySecretStore`; data used by several suites goes to
+  `Helpers/TestData.swift`, not into `private let` copies.
 - Use `Gate` (ignores cancellation) to hold a fake provider; suites that wait on streams
   carry `.timeLimit(.minutes(1))`. A test that cancels "the current task" does it inside
   its own `Task { }`, never the test's task.
@@ -92,7 +97,11 @@ Always use `make`, never raw `swift test`:
   `.translationTask` action is a `nonisolated` method; the pack download dialog needs an
   active key window (`NSApp.activate()` first).
 - `AppSettings` uses stored properties with `didSet`: SwiftUI does not observe computed
-  properties over `UserDefaults`.
+  properties over `UserDefaults`. `doubleCopyInterval` is a `Duration` stored as integer
+  milliseconds; the legacy seconds key from earlier builds is migrated on load.
+- Double-copy settings reach the watcher through one channel: `AppDelegate` subscribes with
+  `AppSettings.observeDoubleCopy`; the tray menu and the settings window only change
+  `AppSettings`.
 
 ## Debugging
 
@@ -105,7 +114,13 @@ Always use `make`, never raw `swift test`:
 
 - Line length ≤120 (hard), aim for 60–90; wrap arguments/conditions sensibly.
 - Minimal comments: only for non-obvious decisions or external requirements, one line.
-  Comments inside function bodies start lowercase; doc comments start with the entity name.
+  Comments inside function bodies start lowercase.
+- `///` documents what a declaration is or does: a type's doc starts with the type name
+  ("Router answers…"), a method's with a verb ("Returns…"), a property's is a noun phrase.
+  A lowercase `//` above a declaration explains why it is implemented that way
+  (e.g. why an AppKit override exists).
+- Views: one non-private view per file; private subviews may stay next to their only user.
+- Literal URLs are `static let` constants built with `URL(string: "...")!`.
 - Never name a variable `t` (use meaningful names).
 - UUIDs are v7 (`UUID.v7()` helper in `Tests/EnglCoreTests/Helpers/UUIDv7.swift`).
 - Idiomatic Swift 6 strict concurrency: `Sendable` types, `@MainActor` for UI/pasteboard,

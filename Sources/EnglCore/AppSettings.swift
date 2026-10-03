@@ -7,11 +7,11 @@ import Observation
 @MainActor
 @Observable
 public final class AppSettings {
-    public static let defaultDoubleCopyInterval = 0.5
-
     enum Key {
         static let doubleCopyEnabled = "doubleCopyEnabled"
-        static let doubleCopyInterval = "doubleCopyInterval"
+        static let doubleCopyIntervalMilliseconds = "doubleCopyIntervalMilliseconds"
+        /// Seconds as `Double`, written by earlier builds.
+        static let legacyDoubleCopyInterval = "doubleCopyInterval"
         static let isPinned = "isPinned"
         static let pinnedTopLeftX = "pinnedTopLeftX"
         static let pinnedTopLeftY = "pinnedTopLeftY"
@@ -21,9 +21,9 @@ public final class AppSettings {
         didSet { defaults.set(doubleCopyEnabled, forKey: Key.doubleCopyEnabled) }
     }
 
-    /// Seconds between two copies that make a double Cmd+C.
-    public var doubleCopyInterval: Double {
-        didSet { defaults.set(doubleCopyInterval, forKey: Key.doubleCopyInterval) }
+    /// Maximum time between two copies that make a double Cmd+C.
+    public var doubleCopyInterval: Duration {
+        didSet { saveDoubleCopyInterval() }
     }
 
     public var isPinned: Bool {
@@ -40,10 +40,36 @@ public final class AppSettings {
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         doubleCopyEnabled = defaults.object(forKey: Key.doubleCopyEnabled) as? Bool ?? true
-        doubleCopyInterval = defaults.object(forKey: Key.doubleCopyInterval) as? Double
-            ?? Self.defaultDoubleCopyInterval
+        doubleCopyInterval = Self.loadDoubleCopyInterval(from: defaults)
         isPinned = defaults.bool(forKey: Key.isPinned)
         pinnedTopLeft = Self.loadPinnedTopLeft(from: defaults)
+        if defaults.object(forKey: Key.legacyDoubleCopyInterval) != nil {
+            saveDoubleCopyInterval()
+        }
+    }
+
+    /// Calls `onChange` after every change of `doubleCopyEnabled` or `doubleCopyInterval`
+    /// while the settings exist; changes made in one main-actor turn are reported once.
+    public func observeDoubleCopy(_ onChange: @escaping @MainActor @Sendable () -> Void) {
+        withObservationTracking {
+            _ = doubleCopyEnabled
+            _ = doubleCopyInterval
+        } onChange: { [weak self] in
+            // runs before the new value is stored and only once per registration
+            Task { @MainActor in
+                guard let self else {
+                    return
+                }
+                onChange()
+                self.observeDoubleCopy(onChange)
+            }
+        }
+    }
+
+    private func saveDoubleCopyInterval() {
+        let milliseconds = (doubleCopyInterval / .milliseconds(1)).rounded()
+        defaults.set(Int(milliseconds), forKey: Key.doubleCopyIntervalMilliseconds)
+        defaults.removeObject(forKey: Key.legacyDoubleCopyInterval)
     }
 
     private func savePinnedTopLeft() {
@@ -54,6 +80,16 @@ public final class AppSettings {
         }
         defaults.set(Double(pinnedTopLeft.x), forKey: Key.pinnedTopLeftX)
         defaults.set(Double(pinnedTopLeft.y), forKey: Key.pinnedTopLeftY)
+    }
+
+    private static func loadDoubleCopyInterval(from defaults: UserDefaults) -> Duration {
+        if let milliseconds = defaults.object(forKey: Key.doubleCopyIntervalMilliseconds) as? Int {
+            return .milliseconds(milliseconds)
+        }
+        if let seconds = defaults.object(forKey: Key.legacyDoubleCopyInterval) as? Double {
+            return .milliseconds(Int((seconds * 1000).rounded()))
+        }
+        return DoubleCopyDetector.defaultInterval
     }
 
     private static func loadPinnedTopLeft(from defaults: UserDefaults) -> CGPoint? {

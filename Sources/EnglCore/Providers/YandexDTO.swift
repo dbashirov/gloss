@@ -1,6 +1,6 @@
 import Foundation
 
-/// Response of the Yandex Dictionary `lookup` method.
+/// YandexLookupResponse is the response of the Yandex Dictionary `lookup` method.
 struct YandexLookupResponse: Decodable {
     let def: [YandexDefinition]
 
@@ -67,7 +67,7 @@ struct YandexExample: Decodable {
     }
 }
 
-/// Error body, e.g. `{"code": 401, "message": "API key is invalid"}`.
+/// YandexErrorResponse is an error body, e.g. `{"code": 401, "message": "API key is invalid"}`.
 struct YandexErrorResponse: Decodable {
     let code: Int
 }

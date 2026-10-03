@@ -1,6 +1,8 @@
 /// Router answers a query from its cache or from the first provider in the chain
 /// that succeeds.
 public actor Router {
+    public static let defaultCacheLimit = 500
+
     private let providers: [any TranslationProvider]
     private let cacheLimit: Int
     private var cache: [Query: RoutedResult] = [:]
@@ -8,7 +10,7 @@ public actor Router {
     private var generation = 0
 
     public init(providers: [any TranslationProvider]) {
-        self.init(providers: providers, cacheLimit: 500)
+        self.init(providers: providers, cacheLimit: Self.defaultCacheLimit)
     }
 
     init(providers: [any TranslationProvider], cacheLimit: Int) {

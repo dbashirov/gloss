@@ -29,21 +29,25 @@ struct LanguagePackView: View {
             }
             SettingsNoteView(note: model.packNote)
         }
-        .translationTask(model.packConfiguration, action: prepare)
+        .translationTask(model.packConfiguration, action: prepare(requestID: model.packRequestID))
     }
 
     // nonisolated: the session is not Sendable and must stay off the main actor
-    private nonisolated func prepare(_ session: TranslationSession) async {
-        let failure: String?
-        do {
-            try await session.prepareTranslation()
-            failure = nil
-        } catch is CancellationError {
-            failure = nil
-        } catch {
-            failure = error.localizedDescription
+    private nonisolated func prepare(
+        requestID: Int
+    ) -> @Sendable (TranslationSession) async -> Void {
+        { [model] session in
+            let failure: String?
+            do {
+                try await session.prepareTranslation()
+                failure = nil
+            } catch is CancellationError {
+                failure = nil
+            } catch {
+                failure = error.localizedDescription
+            }
+            await model.packDownloadFinished(requestID: requestID, failure: failure)
         }
-        await model.packDownloadFinished(failure: failure)
     }
 
     @ViewBuilder
@@ -54,12 +58,7 @@ struct LanguagePackView: View {
                 systemImage: state == .installed ? "checkmark.circle" : "exclamationmark.triangle"
             )
         } else {
-            HStack(spacing: 8) {
-                ProgressView()
-                    .controlSize(.small)
-                Text("Проверяю…")
-                    .foregroundStyle(.secondary)
-            }
+            LoadingLabel("Проверяю…")
         }
     }
 }

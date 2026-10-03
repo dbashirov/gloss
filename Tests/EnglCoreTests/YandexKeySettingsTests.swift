@@ -130,6 +130,54 @@ struct YandexKeySettingsTests {
         #expect(settings.note == .success("Ключ сохранён"))
     }
 
+    @Test func reloadDuringSaveShowsSavedKey() async {
+        let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
+        let release = DispatchSemaphore(value: 0)
+        let secrets = FakeSecretStore([account: "old"], beforeWrite: { _ in
+            enteredContinuation.yield()
+            release.wait()
+        })
+        let settings = makeSettings(secrets: secrets)
+        settings.load()
+        settings.draft = "new"
+        settings.save()
+        for await _ in entered {
+            break
+        }
+
+        settings.load()
+        #expect(settings.draft == "old")
+        release.signal()
+        await settings.saveTask?.value
+
+        #expect(settings.draft == "new")
+        #expect(settings.note == .success("Ключ сохранён"))
+    }
+
+    @Test func editAfterReloadDuringSaveIsKept() async {
+        let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
+        let release = DispatchSemaphore(value: 0)
+        let secrets = FakeSecretStore([account: "old"], beforeWrite: { _ in
+            enteredContinuation.yield()
+            release.wait()
+        })
+        let settings = makeSettings(secrets: secrets)
+        settings.load()
+        settings.draft = "new"
+        settings.save()
+        for await _ in entered {
+            break
+        }
+
+        settings.load()
+        settings.draft = "typed"
+        release.signal()
+        await settings.saveTask?.value
+
+        #expect(settings.draft == "typed")
+        #expect(secrets.value(account) == "new")
+    }
+
     @Test func failedSaveIsReported() async {
         let settings = makeSettings(secrets: FakeSecretStore(failsWrites: true))
         settings.load()

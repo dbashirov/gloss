@@ -4,7 +4,7 @@ import os
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let logger = Logger(subsystem: "com.dbashirov.engl", category: "app")
+    private let logger = Logger(subsystem: AppIdentity.bundleID, category: "app")
     private var environment: AppEnvironment?
     private var statusItem: StatusItemController?
     private var panel: PanelController?
@@ -31,7 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // with paste access denied the copy is invisible: show the panel with the hint
         environment.watcher.onUnreadableCopy = { [weak panel, weak environment] in
-            guard environment?.pasteboard.accessBehavior == .alwaysDeny else {
+            guard environment?.pasteboard.isAccessDenied == true else {
                 return
             }
             panel?.showManualInput()
@@ -41,13 +41,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onManualInput: { [weak panel] in
                 panel?.showManualInput()
             },
-            onDoubleCopyToggle: { [weak self] in
-                self?.applyDoubleCopySettings()
-            },
             onOpenSettings: { [weak self] in
                 self?.openSettings()
             }
         )
+        environment.settings.observeDoubleCopy { [weak self] in
+            self?.applyDoubleCopySettings()
+        }
         applyDoubleCopySettings()
     }
 
@@ -86,13 +86,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             pasteboard: environment.pasteboard,
             textTranslator: SystemTextTranslator()
         )
-        let controller = SettingsWindowController(
-            model: model,
-            settings: environment.settings,
-            onDoubleCopyChange: { [weak self] in
-                self?.applyDoubleCopySettings()
-            }
-        )
+        let controller = SettingsWindowController(model: model, settings: environment.settings)
         settingsWindow = controller
         return controller
     }
@@ -103,13 +97,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let settings = environment.settings
         let watcher = environment.watcher
-        watcher.interval = .seconds(settings.doubleCopyInterval)
+        watcher.interval = settings.doubleCopyInterval
         guard settings.doubleCopyEnabled else {
             watcher.stop()
             return
         }
         watcher.start()
-        if environment.pasteboard.accessBehavior == .alwaysDeny {
+        if environment.pasteboard.isAccessDenied {
             logger.warning("""
                 paste access denied: allow Engl in Privacy & Security → Paste from Other Apps
                 """)

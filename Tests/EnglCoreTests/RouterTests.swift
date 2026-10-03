@@ -2,27 +2,15 @@ import Foundation
 import Testing
 @testable import EnglCore
 
-private let word = Query(text: "run", source: .en, target: .ru, kind: .dictionary)
-private let sentence = Query(text: "I run every day", source: .en, target: .ru, kind: .sentence)
-
-private let card = TranslationResult.dictionary(DictionaryEntry(
-    word: "run",
-    transcription: "rʌn",
-    groups: [PartOfSpeechGroup(partOfSpeech: "verb", translations: [Sense(text: "бежать")])]
-))
-private let text = TranslationResult.text(TextTranslation(source: "run", translation: "бежать"))
-
-private struct UnexpectedError: Error {}
-
 struct RouterTests {
     @Test func firstProviderAnswers() async throws {
-        let first = FakeProvider(id: "yandex", result: card)
-        let second = FakeProvider(id: "apple", result: text)
+        let first = FakeProvider(id: "yandex", result: runCard)
+        let second = FakeProvider(id: "apple", result: runText)
         let router = Router(providers: [first, second])
 
-        let routed = try await router.route(word)
+        let routed = try await router.route(runQuery)
 
-        #expect(routed == RoutedResult(providerID: "yandex", result: card))
+        #expect(routed == RoutedResult(providerID: "yandex", result: runCard))
         #expect(first.calls == 1)
         #expect(second.calls == 0)
     }
@@ -30,12 +18,12 @@ struct RouterTests {
     @Test(arguments: [ProviderError.notFound, .invalidKey, .notConfigured, .network])
     func fallsThroughToNextProvider(error: ProviderError) async throws {
         let first = FakeProvider(id: "yandex", error: error)
-        let second = FakeProvider(id: "apple", result: text)
+        let second = FakeProvider(id: "apple", result: runText)
         let router = Router(providers: [first, second])
 
-        let routed = try await router.route(word)
+        let routed = try await router.route(runQuery)
 
-        #expect(routed == RoutedResult(providerID: "apple", result: text, fallbackError: error))
+        #expect(routed == RoutedResult(providerID: "apple", result: runText, fallbackError: error))
         #expect(first.calls == 1)
         #expect(second.calls == 1)
     }
@@ -44,40 +32,40 @@ struct RouterTests {
         let providers = [
             FakeProvider(id: "yandex", error: ProviderError.notFound),
             FakeProvider(id: "claude", error: ProviderError.rateLimited),
-            FakeProvider(id: "apple", result: text),
+            FakeProvider(id: "apple", result: runText),
         ]
 
-        let routed = try await Router(providers: providers).route(word)
+        let routed = try await Router(providers: providers).route(runQuery)
 
         #expect(routed.fallbackError == .rateLimited)
     }
 
     @Test func firstAnswerHasNoFallbackError() async throws {
-        let routed = try await Router(providers: [FakeProvider(id: "yandex", result: card)])
-            .route(word)
+        let routed = try await Router(providers: [FakeProvider(id: "yandex", result: runCard)])
+            .route(runQuery)
 
         #expect(routed.fallbackError == nil)
     }
 
     @Test func skipsProviderThatDoesNotSupportQuery() async throws {
-        let dictionary = FakeProvider(id: "yandex", kinds: [.dictionary], result: card)
-        let translator = FakeProvider(id: "apple", result: text)
+        let dictionary = FakeProvider(id: "yandex", kinds: [.dictionary], result: runCard)
+        let translator = FakeProvider(id: "apple", result: runText)
         let router = Router(providers: [dictionary, translator])
 
-        let routed = try await router.route(sentence)
+        let routed = try await router.route(sentenceQuery)
 
         #expect(routed.providerID == "apple")
         #expect(dictionary.calls == 0)
     }
 
     @Test func throwsNotConfiguredWithoutSuitableProvider() async {
-        let dictionary = FakeProvider(id: "yandex", kinds: [.dictionary], result: card)
+        let dictionary = FakeProvider(id: "yandex", kinds: [.dictionary], result: runCard)
 
         await #expect(throws: ProviderError.notConfigured) {
-            try await Router(providers: [dictionary]).route(sentence)
+            try await Router(providers: [dictionary]).route(sentenceQuery)
         }
         await #expect(throws: ProviderError.notConfigured) {
-            try await Router(providers: []).route(word)
+            try await Router(providers: []).route(runQuery)
         }
     }
 
@@ -97,7 +85,7 @@ struct RouterTests {
         let router = Router(providers: providers)
 
         await #expect(throws: expected) {
-            try await router.route(word)
+            try await router.route(runQuery)
         }
         #expect(providers.allSatisfy { $0.calls == 1 })
     }
@@ -110,11 +98,11 @@ struct RouterTests {
 
     @Test func nonProviderErrorStopsChain() async {
         let first = FakeProvider(id: "yandex", error: UnexpectedError())
-        let second = FakeProvider(id: "apple", result: text)
+        let second = FakeProvider(id: "apple", result: runText)
         let router = Router(providers: [first, second])
 
         await #expect(throws: UnexpectedError.self) {
-            try await router.route(word)
+            try await router.route(runQuery)
         }
         #expect(second.calls == 0)
     }
@@ -123,34 +111,34 @@ struct RouterTests {
 @Suite(.timeLimit(.minutes(1)))
 struct RouterCacheTests {
     @Test func repeatedQueryIsServedFromCache() async throws {
-        let provider = FakeProvider(id: "yandex", result: card)
+        let provider = FakeProvider(id: "yandex", result: runCard)
         let router = Router(providers: [provider])
 
-        let first = try await router.route(word)
-        let second = try await router.route(word)
+        let first = try await router.route(runQuery)
+        let second = try await router.route(runQuery)
 
         #expect(first == second)
         #expect(provider.calls == 1)
     }
 
     @Test func differentQueriesAreCachedSeparately() async throws {
-        let provider = FakeProvider(id: "apple", result: text)
+        let provider = FakeProvider(id: "apple", result: runText)
         let router = Router(providers: [provider])
 
-        _ = try await router.route(word)
-        _ = try await router.route(sentence)
-        _ = try await router.route(sentence)
+        _ = try await router.route(runQuery)
+        _ = try await router.route(sentenceQuery)
+        _ = try await router.route(sentenceQuery)
 
         #expect(provider.calls == 2)
     }
 
     @Test func fallbackResultIsNotCached() async throws {
         let first = FakeProvider(id: "yandex", error: ProviderError.network)
-        let second = FakeProvider(id: "apple", result: text)
+        let second = FakeProvider(id: "apple", result: runText)
         let router = Router(providers: [first, second])
 
-        _ = try await router.route(word)
-        let routed = try await router.route(word)
+        _ = try await router.route(runQuery)
+        let routed = try await router.route(runQuery)
 
         #expect(routed.providerID == "apple")
         #expect(first.calls == 2)
@@ -161,21 +149,21 @@ struct RouterCacheTests {
         let provider = FakeProvider(id: "yandex", error: ProviderError.network)
         let router = Router(providers: [provider])
 
-        await #expect(throws: ProviderError.network) { try await router.route(word) }
-        await #expect(throws: ProviderError.network) { try await router.route(word) }
+        await #expect(throws: ProviderError.network) { try await router.route(runQuery) }
+        await #expect(throws: ProviderError.network) { try await router.route(runQuery) }
         #expect(provider.calls == 2)
     }
 
     @Test func invalidateClearsCache() async throws {
-        let provider = FakeProvider(id: "yandex", result: card)
+        let provider = FakeProvider(id: "yandex", result: runCard)
         let router = Router(providers: [provider])
 
-        _ = try await router.route(word)
+        _ = try await router.route(runQuery)
         await router.invalidate()
-        _ = try await router.route(word)
+        _ = try await router.route(runQuery)
         #expect(provider.calls == 2)
 
-        _ = try await router.route(word)
+        _ = try await router.route(runQuery)
         #expect(provider.calls == 2)
     }
 
@@ -207,11 +195,11 @@ struct RouterCacheTests {
             for await _ in gate {
                 break
             }
-            return card
+            return runCard
         }
         let router = Router(providers: [provider])
 
-        let pending = Task { try await router.route(word) }
+        let pending = Task { try await router.route(runQuery) }
         for await _ in entered {
             break
         }
@@ -220,7 +208,7 @@ struct RouterCacheTests {
         _ = try await pending.value
 
         gateContinuation.yield()
-        _ = try await router.route(word)
+        _ = try await router.route(runQuery)
         #expect(provider.calls == 2)
     }
 }
@@ -229,11 +217,11 @@ struct RouterCacheTests {
 struct RouterCancellationTests {
     @Test func cancellationErrorDoesNotFallThrough() async {
         let first = FakeProvider(id: "yandex", error: CancellationError())
-        let second = FakeProvider(id: "apple", result: text)
+        let second = FakeProvider(id: "apple", result: runText)
         let router = Router(providers: [first, second])
 
         await #expect(throws: CancellationError.self) {
-            try await router.route(word)
+            try await router.route(runQuery)
         }
         #expect(second.calls == 0)
     }
@@ -243,12 +231,12 @@ struct RouterCancellationTests {
         let first = FakeProvider(id: "yandex") { _ in
             enteredContinuation.yield()
             try await Task.sleep(for: .seconds(60))
-            return card
+            return runCard
         }
-        let second = FakeProvider(id: "apple", result: text)
+        let second = FakeProvider(id: "apple", result: runText)
         let router = Router(providers: [first, second])
 
-        let pending = Task { try await router.route(word) }
+        let pending = Task { try await router.route(runQuery) }
         for await _ in entered {
             break
         }
@@ -261,12 +249,12 @@ struct RouterCancellationTests {
     }
 
     @Test func alreadyCancelledTaskSkipsProviders() async {
-        let provider = FakeProvider(id: "yandex", result: card)
+        let provider = FakeProvider(id: "yandex", result: runCard)
         let router = Router(providers: [provider])
 
         let pending = Task {
             withUnsafeCurrentTask { $0?.cancel() }
-            return try await router.route(word)
+            return try await router.route(runQuery)
         }
 
         await #expect(throws: CancellationError.self) {
@@ -280,10 +268,10 @@ struct RouterCancellationTests {
             withUnsafeCurrentTask { $0?.cancel() }
             throw ProviderError.network
         }
-        let second = FakeProvider(id: "apple", result: text)
+        let second = FakeProvider(id: "apple", result: runText)
         let router = Router(providers: [first, second])
 
-        let pending = Task { try await router.route(word) }
+        let pending = Task { try await router.route(runQuery) }
 
         await #expect(throws: CancellationError.self) {
             try await pending.value
@@ -300,8 +288,8 @@ struct RouterIntegrationTests {
         key: String?,
         translator: FakeTextTranslator
     ) -> Router {
-        let secrets = InMemorySecretStore()
-        secrets.write(key, account: YandexDictionaryProvider.keyAccount)
+        let values = key.map { [YandexDictionaryProvider.keyAccount: $0] } ?? [:]
+        let secrets = FakeSecretStore(values)
         return Router(providers: [
             YandexDictionaryProvider(http: http, secrets: secrets),
             AppleTranslationProvider(translator: translator),
@@ -314,7 +302,7 @@ struct RouterIntegrationTests {
         let router = makeRouter(http: http, key: nil, translator: translator)
 
         await #expect(throws: ProviderError.languagePackMissing) {
-            try await router.route(word)
+            try await router.route(runQuery)
         }
         #expect(http.urls.isEmpty)
     }
@@ -324,11 +312,11 @@ struct RouterIntegrationTests {
         let translator = FakeTextTranslator(translation: "бежать")
         let router = makeRouter(http: http, key: "bad-key", translator: translator)
 
-        let routed = try await router.route(word)
+        let routed = try await router.route(runQuery)
 
         #expect(routed == RoutedResult(
             providerID: AppleTranslationProvider.providerID,
-            result: .text(TextTranslation(source: "run", translation: "бежать")),
+            result: runText,
             fallbackError: .invalidKey
         ))
         #expect(routed.fallbackNotice == .invalidKey)
@@ -340,7 +328,7 @@ struct RouterIntegrationTests {
         let router = makeRouter(http: http, key: "key", translator: translator)
 
         await #expect(throws: CancellationError.self) {
-            try await router.route(word)
+            try await router.route(runQuery)
         }
         #expect(translator.texts.isEmpty)
     }

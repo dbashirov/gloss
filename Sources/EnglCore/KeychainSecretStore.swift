@@ -21,7 +21,7 @@ extension KeychainError: LocalizedError {
 
 /// KeychainSecretStore keeps secrets as generic passwords in the user's keychain.
 public struct KeychainSecretStore: SecretStore {
-    public static let defaultService = "com.dbashirov.engl"
+    public static let defaultService = AppIdentity.bundleID
 
     public let service: String
 
@@ -50,7 +50,7 @@ public struct KeychainSecretStore: SecretStore {
     }
 
     public func write(_ value: String?, account: String) throws {
-        guard let value, !value.isEmpty else {
+        guard let value = Self.storedValue(value) else {
             try delete(account)
             return
         }

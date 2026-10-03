@@ -79,28 +79,6 @@ final class PanelController: NSObject, NSWindowDelegate {
         show()
     }
 
-    func hide() {
-        removeMonitors()
-        panel.orderOut(nil)
-        popupCursor = nil
-    }
-
-    func togglePin() {
-        settings.isPinned.toggle()
-        if settings.isPinned {
-            settings.pinnedTopLeft = PopupGeometry.topLeft(of: panel.frame)
-        }
-        updateMonitors()
-    }
-
-    /// The app's own write: neither a copy for the watcher nor kept by clipboard managers.
-    func copy(_ text: String) {
-        guard !text.isEmpty else {
-            return
-        }
-        watcher.ignore(changeCount: pasteboard.write(text))
-    }
-
     // only a drag by the user moves the saved position: own placements may be clamped
     func windowDidMove(_ notification: Notification) {
         if let placedFrame, PopupGeometry.isSamePosition(panel.frame.origin, placedFrame.origin) {
@@ -108,7 +86,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
         popupCursor = nil
         if settings.isPinned {
-            settings.pinnedTopLeft = PopupGeometry.topLeft(of: panel.frame)
+            savePinnedPosition()
         }
     }
 
@@ -120,8 +98,34 @@ final class PanelController: NSObject, NSWindowDelegate {
         hide()
     }
 
+    private func hide() {
+        removeMonitors()
+        panel.orderOut(nil)
+        popupCursor = nil
+    }
+
+    private func togglePin() {
+        settings.isPinned.toggle()
+        if settings.isPinned {
+            savePinnedPosition()
+        }
+        updateMonitors()
+    }
+
+    private func savePinnedPosition() {
+        settings.pinnedTopLeft = PopupGeometry.topLeft(of: panel.frame)
+    }
+
+    /// Writes the app's own copy: neither a copy for the watcher nor kept by clipboard managers.
+    private func copy(_ text: String) {
+        guard !text.isEmpty else {
+            return
+        }
+        watcher.ignore(changeCount: pasteboard.write(text))
+    }
+
     private func show() {
-        model.isPasteAccessDenied = pasteboard.accessBehavior == .alwaysDeny
+        model.isPasteAccessDenied = pasteboard.isAccessDenied
         let size = contentSize()
         let origin = savedOrigin(for: size) ?? popupOrigin(for: size)
         place(CGRect(origin: origin, size: size))

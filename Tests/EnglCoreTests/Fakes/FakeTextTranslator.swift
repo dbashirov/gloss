@@ -5,7 +5,10 @@ import Translation
 final class FakeTextTranslator: TextTranslator {
     typealias Handler = @Sendable (String) async throws -> String
 
-    struct Direction: Equatable {
+    struct Direction: Hashable {
+        static let enRu = Direction(source: .en, target: .ru)
+        static let ruEn = Direction(source: .ru, target: .en)
+
         let source: Language
         let target: Language
     }
@@ -16,13 +19,21 @@ final class FakeTextTranslator: TextTranslator {
         var translateDirections: [Direction] = []
     }
 
-    private let availability: LanguageAvailability.Status
+    private let statuses: [Direction: LanguageAvailability.Status]
     private let handler: Handler
     private let calls = Mutex(Calls())
 
-    init(status: LanguageAvailability.Status = .installed, handler: @escaping Handler) {
-        self.availability = status
+    /// A direction missing from `statuses` is `.unsupported`.
+    init(statuses: [Direction: LanguageAvailability.Status], handler: @escaping Handler) {
+        self.statuses = statuses
         self.handler = handler
+    }
+
+    convenience init(
+        status: LanguageAvailability.Status = .installed,
+        handler: @escaping Handler
+    ) {
+        self.init(statuses: [.enRu: status, .ruEn: status], handler: handler)
     }
 
     convenience init(status: LanguageAvailability.Status = .installed, translation: String) {
@@ -49,8 +60,9 @@ final class FakeTextTranslator: TextTranslator {
         from source: Language,
         to target: Language
     ) async -> LanguageAvailability.Status {
-        calls.withLock { $0.statusDirections.append(Direction(source: source, target: target)) }
-        return availability
+        let direction = Direction(source: source, target: target)
+        calls.withLock { $0.statusDirections.append(direction) }
+        return statuses[direction] ?? .unsupported
     }
 
     func translate(

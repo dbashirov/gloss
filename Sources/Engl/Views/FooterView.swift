@@ -6,7 +6,6 @@ struct FooterView: View {
     let providerID: String
     let onCopy: () -> Void
 
-    // the @State macro needs SwiftUIMacros, which Command Line Tools lack
     private let copyCount = State(initialValue: 0)
 
     var body: some View {

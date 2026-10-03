@@ -2,26 +2,6 @@ import Testing
 import Translation
 @testable import EnglCore
 
-private struct DirectionalTranslator: TextTranslator {
-    let forward: LanguageAvailability.Status
-    let backward: LanguageAvailability.Status
-
-    func status(
-        from source: Language,
-        to target: Language
-    ) async -> LanguageAvailability.Status {
-        source == .en ? forward : backward
-    }
-
-    func translate(
-        _ text: String,
-        from source: Language,
-        to target: Language
-    ) async throws -> String {
-        text
-    }
-}
-
 struct LanguagePackStateTests {
     @Test(arguments: [
         (LanguageAvailability.Status.installed, LanguageAvailability.Status.installed,
@@ -38,7 +18,7 @@ struct LanguagePackStateTests {
         backward: LanguageAvailability.Status,
         expected: LanguagePackState
     ) async {
-        let translator = DirectionalTranslator(forward: forward, backward: backward)
+        let translator = FakeTextTranslator(statuses: [.enRu: forward, .ruEn: backward]) { $0 }
 
         #expect(await LanguagePackState.check(with: translator) == expected)
     }

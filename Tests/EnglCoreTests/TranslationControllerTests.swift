@@ -1,15 +1,7 @@
 import Testing
 @testable import EnglCore
 
-private let runQuery = Query(text: "run", source: .en, target: .ru, kind: .dictionary)
-private let runCard = TranslationResult.dictionary(DictionaryEntry(
-    word: "run",
-    transcription: "rʌn",
-    groups: [PartOfSpeechGroup(partOfSpeech: "verb", translations: [Sense(text: "бежать")])]
-))
 private let walkText = TranslationResult.text(TextTranslation(source: "walk", translation: "идти"))
-
-private struct UnexpectedError: Error {}
 
 @MainActor
 private func makeController(_ providers: [any TranslationProvider]) -> TranslationController {

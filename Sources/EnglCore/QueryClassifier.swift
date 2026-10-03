@@ -12,8 +12,8 @@ public enum QueryClassifier {
     /// Classifies text that has already passed `TextNormalizer`.
     public static func classify(_ text: String) -> Query {
         let words = words(in: text)
-        let source = detectLanguage(text, wordCount: words.count)
-        let kind = detectKind(text, wordCount: words.count)
+        let source = detectLanguage(text, words: words)
+        let kind = detectKind(text, words: words)
         return Query(
             text: kind == .dictionary ? lookupText(text) : text,
             source: source,
@@ -22,8 +22,8 @@ public enum QueryClassifier {
         )
     }
 
-    static func detectLanguage(_ text: String, wordCount: Int) -> Language {
-        if wordCount <= shortTextWords || !text.contains(where: \.isLetter) {
+    static func detectLanguage(_ text: String, words: [Substring]) -> Language {
+        if words.count <= shortTextWords || !text.contains(where: \.isLetter) {
             return scriptLanguage(text)
         }
         let recognizer = NLLanguageRecognizer()
@@ -39,12 +39,12 @@ public enum QueryClassifier {
         }
     }
 
-    static func detectKind(_ text: String, wordCount: Int) -> QueryKind {
-        guard wordCount <= maxDictionaryWords else {
+    static func detectKind(_ text: String, words: [Substring]) -> QueryKind {
+        guard words.count <= maxDictionaryWords else {
             return .sentence
         }
         // the dictionary is a network service: keep likely secrets on device
-        if !text.contains(where: \.isLetter) || words(in: text).contains(where: looksLikeSecret) {
+        if !text.contains(where: \.isLetter) || words.contains(where: looksLikeSecret) {
             return .sentence
         }
         let tail = text.reversed().first { !closingWrappers.contains($0) }
@@ -54,7 +54,8 @@ public enum QueryClassifier {
         return .dictionary
     }
 
-    static func scriptLanguage(_ text: String) -> Language {
+    /// Returns `.ru` for text with Cyrillic letters and `.en` otherwise.
+    public static func scriptLanguage(_ text: String) -> Language {
         text.unicodeScalars.contains(where: isCyrillic) ? .ru : .en
     }
 
@@ -62,7 +63,7 @@ public enum QueryClassifier {
         (0x0400...0x052F).contains(scalar.value)
     }
 
-    /// looksLikeSecret flags tokens such as passwords, API keys and hashes: no dictionary
+    /// Flags tokens such as passwords, API keys and hashes: no dictionary
     /// word mixes letters with digits at this length or switches case inside a long token.
     static func looksLikeSecret(_ word: Substring) -> Bool {
         let hasDigit = word.contains(where: \.isNumber)
@@ -79,7 +80,7 @@ public enum QueryClassifier {
         text.split(whereSeparator: { $0.isWhitespace })
     }
 
-    /// lookupText strips quotes and commas around a copied word: they break lookups.
+    /// Strips quotes and commas around a copied word: they break lookups.
     private static func lookupText(_ text: String) -> String {
         let trimmed = text.trimmingCharacters(in: .punctuationCharacters)
         return trimmed.isEmpty ? text : trimmed

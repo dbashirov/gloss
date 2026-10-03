@@ -71,7 +71,7 @@ final class FakeSecretStore: SecretStore {
             guard !state.failsWrites else {
                 throw Failure()
             }
-            state.values[account] = value?.isEmpty == false ? value : nil
+            state.values[account] = Self.storedValue(value)
         }
     }
 }
