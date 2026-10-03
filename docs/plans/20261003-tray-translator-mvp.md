@@ -416,16 +416,17 @@ protocol TranslationProvider: Sendable {
 - Create: `Tests/EnglCoreTests/AppleTranslationProviderTests.swift`
 - Create: `Tests/EnglCoreTests/Fakes/FakeTextTranslator.swift`
 
-- [ ] `protocol TextTranslator: Sendable` (async статус + перевод) и реализация на
+- [x] `protocol TextTranslator: Sendable` (async статус + перевод) и реализация на
   `Translation` с локальным созданием `LanguageAvailability`/`TranslationSession`
-- [ ] провайдер: поддерживает оба типа, возвращает `.text`, маппит статус и
+- [x] провайдер: поддерживает оба типа, возвращает `.text`, маппит статус и
   `TranslationError.notInstalled` в `languagePackMissing`, `.unsupported` в `notFound`,
   отмену в `CancellationError`
-- [ ] написать тесты провайдера на фейке: установлен, не скачан, не поддерживается,
+- [x] написать тесты провайдера на фейке: установлен, не скачан, не поддерживается,
   `notInstalled` при переводе, прочая ошибка перевода, отмена
-- [ ] написать интеграционный тест на реальном `Translation` с
+- [x] написать интеграционный тест на реальном `Translation` с
   `.enabled(if:)` по статусу `.installed` (сейчас будет пропущен)
-- [ ] run tests - must pass before next task
+  (на этой машине пакет en↔ru не установлен — suite пропускается по runtime-условию)
+- [x] run tests - must pass before next task
 
 ### Task 8: Детектор двойного Cmd+C и ClipboardWatcher
 
