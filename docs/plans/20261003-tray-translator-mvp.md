@@ -460,16 +460,16 @@ protocol TranslationProvider: Sendable {
 - Create: `Tests/EnglCoreTests/AppSettingsTests.swift`
 - Create: `Tests/EnglCoreTests/TranslationControllerTests.swift`
 
-- [ ] `AppSettings` (`@Observable`, хранимые свойства + `didSet`, инжектируемый
+- [x] `AppSettings` (`@Observable`, хранимые свойства + `didSet`, инжектируемый
   `UserDefaults` suite): `doubleCopyEnabled`, `doubleCopyInterval`, `isPinned`, `pinnedOrigin`
-- [ ] `TranslationController` (`@MainActor`, `@Observable`): `state` (`idle`, `loading(query)`,
+- [x] `TranslationController` (`@MainActor`, `@Observable`): `state` (`idle`, `loading(query)`,
   `result(RoutedResult)`, `failed(text, ProviderError)`), `translate(_:)` с нормализацией,
   классификацией и отменой предыдущего `Task`; `CancellationError` не меняет состояние
-- [ ] написать тесты настроек: значения по умолчанию, сохранение и повторная загрузка
+- [x] написать тесты настроек: значения по умолчанию, сохранение и повторная загрузка
   из того же suite, `pinnedOrigin` = `nil` и заданный
-- [ ] написать тесты контроллера: успешный перевод, ошибка, пустой ввод не меняет состояние,
+- [x] написать тесты контроллера: успешный перевод, ошибка, пустой ввод не меняет состояние,
   второй запрос отменяет первый (результат первого не попадает в `state`)
-- [ ] run tests - must pass before next task
+- [x] run tests - must pass before next task
 
 ### Task 10: Оболочка приложения, трей и сборка .app
 
