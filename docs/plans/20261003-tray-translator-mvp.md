@@ -438,19 +438,19 @@ protocol TranslationProvider: Sendable {
 - Create: `Tests/EnglCoreTests/ClipboardWatcherTests.swift`
 - Create: `Tests/EnglCoreTests/Fakes/FakePasteboard.swift`
 
-- [ ] `DoubleCopyDetector.register(delta:at:isConcealed:) -> Bool` — чистая логика
-- [ ] протокол `PasteboardReading` (только протокол, адаптер — в Task 10)
-- [ ] `ClipboardWatcher` (`@MainActor`): цикл на `Task.sleep` 100 мс, `start`/`stop`,
+- [x] `DoubleCopyDetector.register(delta:at:isConcealed:) -> Bool` — чистая логика
+- [x] протокол `PasteboardReading` (только протокол, адаптер — в Task 10)
+- [x] `ClipboardWatcher` (`@MainActor`): цикл на `Task.sleep` 100 мс, `start`/`stop`,
   базовый `changeCount` при старте, интервал из настроек, `ignore(changeCount:)`,
   чтение `string()` только после срабатывания, колбэк `onDoubleCopy(String)`
-- [ ] написать тесты детектора: два изменения в окне → триггер; вне окна → нет;
+- [x] написать тесты детектора: два изменения в окне → триггер; вне окна → нет;
   `delta = 2` за один тик → триггер; третье изменение не даёт второй триггер;
   Concealed/Transient сбрасывает
-- [ ] написать тесты watcher на `FakePasteboard` и ручном `tick()`: стартовый `changeCount`
+- [x] написать тесты watcher на `FakePasteboard` и ручном `tick()`: стартовый `changeCount`
   не считается копированием; текст доходит до колбэка; `string()` не вызывается до
   срабатывания; нетекстовый буфер игнорируется; собственная запись игнорируется;
   после `stop` колбэк не вызывается
-- [ ] run tests - must pass before next task
+- [x] run tests - must pass before next task
 
 ### Task 9: Настройки и TranslationController
 
