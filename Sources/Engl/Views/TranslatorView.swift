@@ -31,34 +31,38 @@ struct TranslatorView: View {
                 .focused($isQueryFocused)
                 .onSubmit { translator.translate(model.query) }
                 .help("Enter — перевести, ⌥Enter — новая строка")
-            if model.isPasteAccessDenied {
-                NoticeView(
-                    message: "Доступ к буферу обмена запрещён — двойной Cmd+C не работает",
-                    action: .allowPasteboardAccess,
-                    perform: actions.perform
-                )
-            }
+            // notices scroll with the result: a small panel keeps the field and footer visible
             ScrollView {
-                stateContent
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .onGeometryChange(for: CGFloat.self) { proxy in
-                        proxy.size.height
-                    } action: { height in
-                        resultHeight.wrappedValue = height
+                VStack(alignment: .leading, spacing: 10) {
+                    if model.isPasteAccessDenied {
+                        NoticeView(
+                            message: "Доступ к буферу обмена запрещён — двойной Cmd+C не работает",
+                            action: .allowPasteboardAccess,
+                            perform: actions.perform
+                        )
                     }
+                    stateContent
+                    if case .result(let routed) = translator.state,
+                       let notice = routed.fallbackNotice {
+                        NoticeView(
+                            message: notice.message,
+                            action: notice.action,
+                            perform: actions.perform
+                        )
+                        .font(.caption)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.height
+                } action: { height in
+                    resultHeight.wrappedValue = height
+                }
             }
             .frame(height: isAutoSized ? scrollHeight : nil)
             .frame(maxHeight: isAutoSized ? nil : .infinity)
             .scrollBounceBehavior(.basedOnSize)
             if case .result(let routed) = translator.state {
-                if let notice = routed.fallbackNotice {
-                    NoticeView(
-                        message: notice.message,
-                        action: notice.action,
-                        perform: actions.perform
-                    )
-                    .font(.caption)
-                }
                 Divider()
                 FooterView(providerID: routed.providerID) {
                     actions.copy(routed.result.copyText)

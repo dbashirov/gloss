@@ -10,7 +10,8 @@ import SwiftUI
 final class PanelController: NSObject, NSWindowDelegate {
     static let autoWidth: CGFloat = 380
     static let autoMaxHeight: CGFloat = 480
-    static let minSize = CGSize(width: 300, height: 160)
+    /// Fits the header, a six-line query field and the footer; the rest scrolls.
+    static let minSize = CGSize(width: 300, height: 240)
 
     private let panel = TranslatorPanel()
     private let settings: AppSettings
@@ -231,8 +232,9 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     private func contentSize() -> CGSize {
         if let panelSize = settings.panelSize {
-            let screen = visibleFrame(near: settings.pinnedTopLeft ?? NSEvent.mouseLocation)
-            guard let screen else {
+            // the screen the panel is placed on: the pinned position or the cursor
+            let pinned = settings.isPinned ? settings.pinnedTopLeft : nil
+            guard let screen = visibleFrame(near: pinned ?? NSEvent.mouseLocation) else {
                 return panelSize
             }
             return PopupGeometry.fit(size: panelSize, minSize: Self.minSize, visibleFrame: screen)
