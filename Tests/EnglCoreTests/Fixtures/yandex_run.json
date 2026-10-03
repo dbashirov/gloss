@@ -1,0 +1,64 @@
+{
+  "head": {},
+  "def": [
+    {
+      "text": "run",
+      "pos": "verb",
+      "ts": "rʌn",
+      "tr": [
+        {
+          "text": "бежать",
+          "pos": "verb",
+          "asp": "несов",
+          "fr": 10,
+          "syn": [
+            { "text": "бегать", "pos": "verb", "asp": "несов", "fr": 5 },
+            { "text": "побежать", "pos": "verb", "asp": "сов", "fr": 5 }
+          ],
+          "mean": [
+            { "text": "flee" },
+            { "text": "go" }
+          ],
+          "ex": [
+            {
+              "text": "run away",
+              "tr": [{ "text": "убегать" }]
+            },
+            {
+              "text": "run fast",
+              "tr": [{ "text": "быстро бежать" }, { "text": "быстро бегать" }]
+            }
+          ]
+        },
+        {
+          "text": "управлять",
+          "pos": "verb",
+          "asp": "несов",
+          "fr": 5,
+          "mean": [{ "text": "manage" }],
+          "ex": [
+            {
+              "text": "run a business",
+              "tr": [{ "text": "управлять бизнесом" }]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "text": "run",
+      "pos": "noun",
+      "ts": "rʌn",
+      "tr": [
+        {
+          "text": "пробег",
+          "pos": "noun",
+          "gen": "м",
+          "fr": 5,
+          "syn": [{ "text": "забег", "pos": "noun", "gen": "м", "fr": 1 }],
+          "mean": [{ "text": "race" }]
+        }
+      ]
+    }
+  ]
+}

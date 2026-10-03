@@ -393,19 +393,20 @@ protocol TranslationProvider: Sendable {
 - Create: `Tests/EnglCoreTests/Fixtures/yandex_error_401.json`
 - Modify: `Package.swift` (ресурсы тестов)
 
-- [ ] `protocol HTTPClient: Sendable` + реализация на `URLSession` с таймаутом 5 с
-- [ ] DTO ответа `lookup` и маппинг в `DictionaryEntry`
-- [ ] провайдер: `supports` только для `kind == .dictionary`, ключ из `SecretStore`,
+- [x] `protocol HTTPClient: Sendable` + реализация на `URLSession` с таймаутом 5 с
+- [x] DTO ответа `lookup` и маппинг в `DictionaryEntry`
+- [x] провайдер: `supports` только для `kind == .dictionary`, ключ из `SecretStore`,
   построение URL с `lang`, `ui=ru`, `flags=4`
-- [ ] маппинг HTTP-статусов, битого JSON и сетевых ошибок в `ProviderError`;
+- [x] маппинг HTTP-статусов, битого JSON и сетевых ошибок в `ProviderError`;
   `URLError(.cancelled)` → `CancellationError`
-- [ ] фикстуры написать вручную по документации (`def/ts/tr/syn/mean/ex`); когда появится
+- [x] фикстуры написать вручную по документации (`def/ts/tr/syn/mean/ex`); когда появится
   ключ — сверить с реальным ответом `curl`
-- [ ] написать тесты парсинга фикстур (части речи, транскрипция, синонимы, примеры)
-- [ ] написать тесты ошибок: нет ключа, пустой `def`, 401, 402, 403, 413, 500, битый JSON,
+  (сверка с реальным ответом пропущена — ключа нет; ⚠️ сделать при появлении ключа)
+- [x] написать тесты парсинга фикстур (части речи, транскрипция, синонимы, примеры)
+- [x] написать тесты ошибок: нет ключа, пустой `def`, 401, 402, 403, 413, 500, битый JSON,
   таймаут, отмена
-- [ ] написать тест построения URL (параметры, экранирование текста)
-- [ ] run tests - must pass before next task
+- [x] написать тест построения URL (параметры, экранирование текста)
+- [x] run tests - must pass before next task
 
 ### Task 7: AppleTranslationProvider
 

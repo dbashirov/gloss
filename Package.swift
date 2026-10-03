@@ -11,6 +11,10 @@ let package = Package(
     targets: [
         .target(name: "EnglCore"),
         .executableTarget(name: "Engl", dependencies: ["EnglCore"]),
-        .testTarget(name: "EnglCoreTests", dependencies: ["EnglCore"]),
+        .testTarget(
+            name: "EnglCoreTests",
+            dependencies: ["EnglCore"],
+            resources: [.process("Fixtures")]
+        ),
     ]
 )
