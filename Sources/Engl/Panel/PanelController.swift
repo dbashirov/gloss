@@ -31,6 +31,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     ))
 
     private var clickMonitor: Any?
+    private var ownClickMonitor: Any?
     private var activationObserver: (any NSObjectProtocol)?
     /// The cursor the popup is anchored to; `nil` once the user moved the panel.
     private var popupCursor: CGPoint?
@@ -228,6 +229,19 @@ final class PanelController: NSObject, NSWindowDelegate {
                 }
             }
         }
+        if ownClickMonitor == nil {
+            // the app's own windows, e.g. the settings, are not seen by the global monitor
+            ownClickMonitor = NSEvent.addLocalMonitorForEvents(
+                matching: [.leftMouseDown, .rightMouseDown]
+            ) { [weak self] event in
+                MainActor.assumeIsolated {
+                    if let self, event.window !== self.panel {
+                        self.hide()
+                    }
+                }
+                return event
+            }
+        }
         if activationObserver == nil {
             let ownPID = ProcessInfo.processInfo.processIdentifier
             activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
@@ -251,6 +265,10 @@ final class PanelController: NSObject, NSWindowDelegate {
         if let clickMonitor {
             NSEvent.removeMonitor(clickMonitor)
             self.clickMonitor = nil
+        }
+        if let ownClickMonitor {
+            NSEvent.removeMonitor(ownClickMonitor)
+            self.ownClickMonitor = nil
         }
         if let activationObserver {
             NSWorkspace.shared.notificationCenter.removeObserver(activationObserver)

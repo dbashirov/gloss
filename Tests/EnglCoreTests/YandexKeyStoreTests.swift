@@ -4,17 +4,17 @@ import Testing
 private let account = YandexDictionaryProvider.keyAccount
 
 struct YandexKeyStoreTests {
-    @Test func loadsStoredKey() throws {
+    @Test func loadsStoredKey() async throws {
         let secrets = FakeSecretStore([account: "stored"])
         let store = YandexKeyStore(secrets: secrets, router: Router(providers: []))
 
-        #expect(try store.load() == "stored")
+        #expect(try await store.load() == "stored")
     }
 
-    @Test func loadsEmptyStringWithoutKey() throws {
+    @Test func loadsEmptyStringWithoutKey() async throws {
         let store = YandexKeyStore(secrets: FakeSecretStore(), router: Router(providers: []))
 
-        #expect(try store.load() == "")
+        #expect(try await store.load() == "")
     }
 
     @Test func savesTrimmedKey() async throws {
@@ -66,11 +66,11 @@ struct YandexKeyStoreTests {
         #expect(provider.calls == 1)
     }
 
-    @Test func loadReportsUnreadableKey() {
+    @Test func loadReportsUnreadableKey() async {
         let store = YandexKeyStore(secrets: FakeSecretStore.broken(), router: Router(providers: []))
 
-        #expect(throws: FakeSecretStore.Failure.self) {
-            try store.load()
+        await #expect(throws: FakeSecretStore.Failure.self) {
+            try await store.load()
         }
     }
 }

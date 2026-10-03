@@ -11,12 +11,17 @@ public struct YandexKeyStore: Sendable {
         self.router = router
     }
 
-    public func load() throws -> String {
+    /// Returns the stored key or an empty string. Runs off the caller's actor:
+    /// a Keychain read may wait for an access prompt.
+    @concurrent
+    public func load() async throws -> String {
         try secrets.read(YandexDictionaryProvider.keyAccount) ?? ""
     }
 
     /// Stores the trimmed key and returns it; an empty key removes the stored one.
+    /// Runs off the caller's actor, like `load()`.
     @discardableResult
+    @concurrent
     public func save(_ key: String) async throws -> String {
         let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
         try secrets.write(trimmed, account: YandexDictionaryProvider.keyAccount)

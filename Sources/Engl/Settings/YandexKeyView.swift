@@ -19,7 +19,7 @@ struct YandexKeyView: View {
                 key.check()
             }
             .disabled(key.isChecking)
-            if key.isChecking {
+            if key.isLoading || key.isChecking {
                 ProgressView()
                     .controlSize(.small)
             }

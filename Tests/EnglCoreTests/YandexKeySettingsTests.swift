@@ -15,13 +15,20 @@ private func makeSettings(
     )
 }
 
+private extension YandexKeySettings {
+    func loadAndWait() async {
+        load()
+        await loadTask?.value
+    }
+}
+
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct YandexKeySettingsTests {
-    @Test func loadsStoredKey() {
+    @Test func loadsStoredKey() async {
         let settings = makeSettings(secrets: FakeSecretStore([account: "stored"]))
 
-        settings.load()
+        await settings.loadAndWait()
 
         #expect(settings.draft == "stored")
         #expect(settings.isLoaded)
@@ -33,7 +40,7 @@ struct YandexKeySettingsTests {
         let secrets = FakeSecretStore([account: "stored"], failsReads: true)
         let settings = makeSettings(secrets: secrets)
 
-        settings.load()
+        await settings.loadAndWait()
         settings.save()
         await settings.saveTask?.value
 
@@ -48,7 +55,7 @@ struct YandexKeySettingsTests {
     @Test func newKeyCanBeSavedOverUnreadableOne() async {
         let secrets = FakeSecretStore([account: "stored"], failsReads: true)
         let settings = makeSettings(secrets: secrets)
-        settings.load()
+        await settings.loadAndWait()
 
         settings.draft = "new-key"
         settings.save()
@@ -62,7 +69,7 @@ struct YandexKeySettingsTests {
     @Test func savesTrimmedKey() async {
         let secrets = FakeSecretStore()
         let settings = makeSettings(secrets: secrets)
-        settings.load()
+        await settings.loadAndWait()
 
         settings.draft = "  new-key\n"
         settings.save()
@@ -76,7 +83,7 @@ struct YandexKeySettingsTests {
     @Test func emptyDraftRemovesKey() async {
         let secrets = FakeSecretStore([account: "stored"])
         let settings = makeSettings(secrets: secrets)
-        settings.load()
+        await settings.loadAndWait()
 
         settings.draft = " "
         settings.save()
@@ -90,7 +97,7 @@ struct YandexKeySettingsTests {
     @Test func editDuringSaveIsKept() async {
         let secrets = FakeSecretStore()
         let settings = makeSettings(secrets: secrets)
-        settings.load()
+        await settings.loadAndWait()
 
         settings.draft = " first "
         settings.save()
@@ -114,7 +121,7 @@ struct YandexKeySettingsTests {
             _ = secondArrived.wait(timeout: .now() + .milliseconds(300))
         })
         let settings = makeSettings(secrets: secrets)
-        settings.load()
+        await settings.loadAndWait()
 
         settings.draft = "first"
         settings.save()
@@ -138,14 +145,14 @@ struct YandexKeySettingsTests {
             release.wait()
         })
         let settings = makeSettings(secrets: secrets)
-        settings.load()
+        await settings.loadAndWait()
         settings.draft = "new"
         settings.save()
         for await _ in entered {
             break
         }
 
-        settings.load()
+        await settings.loadAndWait()
         #expect(settings.draft == "old")
         release.signal()
         await settings.saveTask?.value
@@ -162,14 +169,14 @@ struct YandexKeySettingsTests {
             release.wait()
         })
         let settings = makeSettings(secrets: secrets)
-        settings.load()
+        await settings.loadAndWait()
         settings.draft = "new"
         settings.save()
         for await _ in entered {
             break
         }
 
-        settings.load()
+        await settings.loadAndWait()
         settings.draft = "typed"
         release.signal()
         await settings.saveTask?.value
@@ -180,7 +187,7 @@ struct YandexKeySettingsTests {
 
     @Test func failedSaveIsReported() async {
         let settings = makeSettings(secrets: FakeSecretStore(failsWrites: true))
-        settings.load()
+        await settings.loadAndWait()
 
         settings.draft = "new-key"
         settings.save()
@@ -244,7 +251,7 @@ struct YandexKeySettingsTests {
             break
         }
 
-        settings.load()
+        await settings.loadAndWait()
         gate.open()
         await check?.value
 
@@ -280,5 +287,182 @@ struct YandexKeySettingsTests {
 
         #expect(settings.note == .success("Ключ действителен"))
         #expect(!settings.isChecking)
+    }
+
+    @Test func readsKeyOffMainActor() async {
+        let (onMain, onMainContinuation) = AsyncStream.makeStream(of: Bool.self)
+        let release = DispatchSemaphore(value: 0)
+        let secrets = FakeSecretStore([account: "stored"], afterRead: { _ in
+            onMainContinuation.yield(Thread.isMainThread)
+            // a read on the main actor would block load() until the timeout
+            _ = release.wait(timeout: .now() + .seconds(5))
+        })
+        let settings = makeSettings(secrets: secrets)
+
+        settings.load()
+        #expect(settings.isLoading)
+        #expect(settings.draft.isEmpty)
+        #expect(!settings.canSave)
+        settings.save()
+        release.signal()
+        await settings.loadTask?.value
+
+        var readOnMain: Bool?
+        for await value in onMain {
+            readOnMain = value
+            break
+        }
+        #expect(readOnMain == false)
+        #expect(!settings.isLoading)
+        #expect(settings.isLoaded)
+        #expect(settings.draft == "stored")
+        #expect(secrets.writes == 0)
+    }
+
+    @Test func editDuringLoadIsKept() async {
+        let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
+        let release = DispatchSemaphore(value: 0)
+        let secrets = FakeSecretStore([account: "stored"], afterRead: { _ in
+            enteredContinuation.yield()
+            release.wait()
+        })
+        let settings = makeSettings(secrets: secrets)
+        settings.load()
+        for await _ in entered {
+            break
+        }
+
+        settings.draft = "typed"
+        release.signal()
+        await settings.loadTask?.value
+
+        #expect(settings.draft == "typed")
+        #expect(settings.isLoaded)
+        #expect(!settings.isLoading)
+    }
+
+    @Test func staleLoadIsDropped() async {
+        let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
+        let release = DispatchSemaphore(value: 0)
+        let secrets = FakeSecretStore([account: "old"], afterRead: { _ in
+            enteredContinuation.yield()
+            release.wait()
+        })
+        let settings = makeSettings(secrets: secrets)
+        settings.load()
+        let first = settings.loadTask
+        for await _ in entered {
+            break
+        }
+
+        // the second read fails before reaching afterRead, so only the first one waits
+        secrets.failsReads = true
+        await settings.loadAndWait()
+        release.signal()
+        await first?.value
+
+        #expect(settings.draft.isEmpty)
+        #expect(!settings.isLoaded)
+        #expect(!settings.canSave)
+        #expect(settings.note == .failure("Не удалось прочитать ключ из Связки ключей"))
+    }
+
+    @Test func saveDuringLoadWins() async {
+        let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
+        let release = DispatchSemaphore(value: 0)
+        let secrets = FakeSecretStore([account: "old"], afterRead: { _ in
+            enteredContinuation.yield()
+            release.wait()
+        })
+        let settings = makeSettings(secrets: secrets)
+        settings.load()
+        let load = settings.loadTask
+        for await _ in entered {
+            break
+        }
+
+        settings.draft = "new"
+        settings.save()
+        await settings.saveTask?.value
+        #expect(!settings.isLoading)
+        release.signal()
+        await load?.value
+
+        #expect(settings.draft == "new")
+        #expect(settings.isLoaded)
+        #expect(secrets.value(account) == "new")
+        #expect(settings.note == .success("Ключ сохранён"))
+    }
+
+    @Test func editDropsCheckInFlight() async throws {
+        let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
+        let gate = Gate()
+        let validBody = try fixture("yandex_run")
+        let http = FakeHTTPClient { _ in
+            enteredContinuation.yield()
+            await gate.wait()
+            return HTTPResponse(statusCode: 200, body: validBody)
+        }
+        let settings = makeSettings(http: http)
+        settings.draft = "old"
+        settings.check()
+        let check = settings.checkTask
+        for await _ in entered {
+            break
+        }
+
+        settings.draft = "new"
+        #expect(!settings.isChecking)
+        gate.open()
+        await check?.value
+
+        #expect(!settings.isChecking)
+        #expect(settings.note == nil)
+    }
+
+    @Test func saveDropsCheckInFlight() async throws {
+        let (entered, enteredContinuation) = AsyncStream.makeStream(of: Void.self)
+        let gate = Gate()
+        let validBody = try fixture("yandex_run")
+        let http = FakeHTTPClient { _ in
+            enteredContinuation.yield()
+            await gate.wait()
+            return HTTPResponse(statusCode: 200, body: validBody)
+        }
+        let settings = makeSettings(http: http)
+        await settings.loadAndWait()
+        settings.draft = "key"
+        settings.check()
+        let check = settings.checkTask
+        for await _ in entered {
+            break
+        }
+
+        settings.save()
+        #expect(!settings.isChecking)
+        await settings.saveTask?.value
+        gate.open()
+        await check?.value
+
+        #expect(!settings.isChecking)
+        #expect(settings.note == .success("Ключ сохранён"))
+    }
+
+    @Test func editHidesCheckOutcomeOnly() async throws {
+        let http = FakeHTTPClient(status: 200, body: try fixture("yandex_run"))
+        let settings = makeSettings(http: http)
+        await settings.loadAndWait()
+        settings.draft = "key"
+        settings.check()
+        await settings.checkTask?.value
+        #expect(settings.note == .success("Ключ действителен"))
+
+        settings.draft = "other"
+        #expect(settings.note == nil)
+
+        settings.save()
+        await settings.saveTask?.value
+        settings.draft = "edited"
+        #expect(settings.note == .success("Ключ сохранён"))
     }
 }
