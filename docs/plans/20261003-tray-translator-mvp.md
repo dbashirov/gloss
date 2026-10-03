@@ -542,21 +542,30 @@ add-generic-password` до появления окна настроек в Task 
 - Create: `Sources/Engl/Speech.swift`
 - Create: `Sources/EnglCore/ProviderError+Message.swift`
 - Create: `Tests/EnglCoreTests/ProviderErrorMessageTests.swift`
+- ➕ Create: `Sources/EnglCore/ResultPresentation.swift` (имя источника, текст для 📋, код голоса)
+- ➕ Create: `Sources/Engl/Panel/PanelModel.swift` (`PanelModel` + `PanelActions`)
+- ➕ Create: `Sources/Engl/SystemSettingsLink.swift` (панели «Системных настроек» для действий ошибок)
+- ➕ Modify: `Sources/Engl/Panel/PanelController.swift`, `Sources/Engl/AppDelegate.swift`,
+  `Sources/Engl/SystemPasteboard.swift`, `Sources/EnglCore/ProviderError.swift` (`CaseIterable`)
+- ➕ Delete: `Sources/Engl/Panel/PanelPlaceholderView.swift`
 
-- [ ] `HeaderView`: ручка перетаскивания (`WindowDragGesture`) и 📌
-- [ ] `TranslatorView`: поле запроса (Enter → `translate`), переключение по `state`:
+- [x] `HeaderView`: ручка перетаскивания (`WindowDragGesture`) и 📌
+- [x] ➕ кнопка ✕ в `HeaderView` закрывает панель в любом режиме; Esc снова закрывает
+  только попап (закреплённое окно — только по ✕)
+- [x] `TranslatorView`: поле запроса (Enter → `translate`), переключение по `state`:
   загрузка, карточка, текст, ошибка с действием; фиксированная ширина, максимальная
   высота со скроллом
-- [ ] `DictionaryCardView`: слово + транскрипция + 🔊, группы по частям речи, варианты,
+- [x] `DictionaryCardView`: слово + транскрипция + 🔊, группы по частям речи, варианты,
   синонимы, примеры с переводом
-- [ ] `TextResultView`: перевод с выделяемым текстом
-- [ ] `FooterView`: источник (по `providerID`), 📋 копировать перевод (запись с
+- [x] `TextResultView`: перевод с выделяемым текстом
+- [x] `FooterView`: источник (по `providerID`), 📋 копировать перевод (запись с
   `TransientType`, `changeCount` записи передаётся в `ClipboardWatcher.ignore`)
-- [ ] `Speech`: `AVSpeechSynthesizer` с голосом под язык
-- [ ] `ProviderError` → русский текст и тип действия (открыть настройки / скачать пакет /
-  разрешить доступ к буферу)
-- [ ] написать тесты сообщений об ошибках (каждый case имеет текст и правильное действие)
-- [ ] run tests - must pass before next task
+- [x] `Speech`: `AVSpeechSynthesizer` с голосом под язык
+- [x] `ProviderError` → русский текст и тип действия (открыть настройки / скачать пакет /
+  разрешить доступ к буферу); до Task 13 «открыть настройки» пишет в лог, «скачать пакет»
+  и «разрешить доступ» открывают нужные панели «Системных настроек»
+- [x] написать тесты сообщений об ошибках (каждый case имеет текст и правильное действие)
+- [x] run tests - must pass before next task
 
 ### Task 13: Окно настроек
 

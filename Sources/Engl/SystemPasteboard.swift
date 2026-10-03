@@ -26,4 +26,14 @@ final class SystemPasteboard: PasteboardReading {
     func string() -> String? {
         pasteboard.string(forType: .string)
     }
+
+    /// Writes text marked as transient so clipboard managers skip it; returns the new
+    /// `changeCount` for `ClipboardWatcher.ignore(changeCount:)`.
+    func write(_ text: String) -> Int {
+        let transient = NSPasteboard.PasteboardType(PasteboardType.transient)
+        pasteboard.declareTypes([.string, transient], owner: nil)
+        pasteboard.setString(text, forType: .string)
+        pasteboard.setData(Data(), forType: transient)
+        return pasteboard.changeCount
+    }
 }

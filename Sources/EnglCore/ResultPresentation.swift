@@ -1,0 +1,53 @@
+import Foundation
+
+/// ProviderInfo describes a translation source for the panel footer.
+public struct ProviderInfo: Sendable, Equatable {
+    public let name: String
+    public let url: URL?
+
+    /// Unknown providers are shown by their identifier.
+    public static func info(for providerID: String) -> ProviderInfo {
+        switch providerID {
+        case YandexDictionaryProvider.providerID:
+            // the Yandex Dictionary terms require this attribution with a link
+            ProviderInfo(
+                name: "Реализовано с помощью сервиса «Яндекс.Словарь»",
+                url: URL(string: "https://yandex.ru/dev/dictionary/")
+            )
+        case AppleTranslationProvider.providerID:
+            ProviderInfo(name: "Apple Translation", url: nil)
+        default:
+            ProviderInfo(name: providerID, url: nil)
+        }
+    }
+}
+
+extension TranslationResult {
+    /// The text the copy button puts on the pasteboard: all distinct dictionary
+    /// translations or the translated text.
+    public var copyText: String {
+        switch self {
+        case .dictionary(let entry):
+            var seen = Set<String>()
+            let senses = entry.groups
+                .flatMap(\.translations)
+                .map(\.text)
+                .filter { seen.insert($0).inserted }
+            return senses.joined(separator: ", ")
+        case .text(let translation):
+            return translation.translation
+        }
+    }
+}
+
+extension Language {
+    /// BCP 47 code for the speech voice.
+    public var voiceCode: String {
+        switch self {
+        case .en:
+            "en-US"
+        case .ru:
+            "ru-RU"
+        }
+    }
+}

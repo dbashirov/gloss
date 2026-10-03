@@ -2,7 +2,8 @@ import AppKit
 import EnglCore
 
 /// PanelController shows the translator panel either as a popup at the cursor, closed by
-/// Esc, an outside click or another app's activation, or pinned at a saved position.
+/// Esc, an outside click or another app's activation, or pinned at a saved position
+/// and closed only by its close button.
 @MainActor
 final class PanelController: NSObject, NSWindowDelegate {
     static let width: CGFloat = 380
@@ -11,12 +12,22 @@ final class PanelController: NSObject, NSWindowDelegate {
     private let panel = TranslatorPanel()
     private let settings: AppSettings
     private let translator: TranslationController
+    private let pasteboard: SystemPasteboard
+    private let watcher: ClipboardWatcher
+    private let onErrorAction: (ErrorAction) -> Void
     private let model = PanelModel()
-    private lazy var hostingView = PanelHostingView(rootView: PanelPlaceholderView(
+    private let speech = Speech()
+    private lazy var hostingView = PanelHostingView(rootView: TranslatorView(
         model: model,
         translator: translator,
         settings: settings,
-        onTogglePin: { [weak self] in self?.togglePin() }
+        speech: speech,
+        actions: PanelActions(
+            togglePin: { [weak self] in self?.togglePin() },
+            close: { [weak self] in self?.hide() },
+            copy: { [weak self] text in self?.copy(text) },
+            perform: { [weak self] action in self?.onErrorAction(action) }
+        )
     ))
 
     private var clickMonitor: Any?
@@ -26,9 +37,18 @@ final class PanelController: NSObject, NSWindowDelegate {
     private var placedFrame: CGRect?
     private var isResizeScheduled = false
 
-    init(settings: AppSettings, translator: TranslationController) {
+    init(
+        settings: AppSettings,
+        translator: TranslationController,
+        pasteboard: SystemPasteboard,
+        watcher: ClipboardWatcher,
+        onErrorAction: @escaping (ErrorAction) -> Void
+    ) {
         self.settings = settings
         self.translator = translator
+        self.pasteboard = pasteboard
+        self.watcher = watcher
+        self.onErrorAction = onErrorAction
         super.init()
         hostingView.sizingOptions = [.intrinsicContentSize]
         hostingView.onContentSizeChange = { [weak self] in
@@ -37,7 +57,7 @@ final class PanelController: NSObject, NSWindowDelegate {
         panel.contentView = hostingView
         panel.delegate = self
         panel.onCancel = { [weak self] in
-            self?.hide()
+            self?.cancel()
         }
     }
 
@@ -69,6 +89,14 @@ final class PanelController: NSObject, NSWindowDelegate {
         updateMonitors()
     }
 
+    /// The app's own write: neither a copy for the watcher nor kept by clipboard managers.
+    func copy(_ text: String) {
+        guard !text.isEmpty else {
+            return
+        }
+        watcher.ignore(changeCount: pasteboard.write(text))
+    }
+
     func windowDidMove(_ notification: Notification) {
         let isOwnPlacement = panel.frame.origin == placedFrame?.origin
         if !isOwnPlacement {
@@ -79,7 +107,16 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
     }
 
+    // Esc closes only the popup: a pinned panel stays until its close button
+    private func cancel() {
+        guard !settings.isPinned else {
+            return
+        }
+        hide()
+    }
+
     private func show() {
+        model.isPasteAccessDenied = pasteboard.accessBehavior == .alwaysDeny
         let size = contentSize()
         let origin = savedOrigin(for: size) ?? popupOrigin(for: size)
         place(CGRect(origin: origin, size: size))

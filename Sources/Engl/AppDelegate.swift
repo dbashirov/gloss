@@ -15,7 +15,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.environment = environment
         let panel = PanelController(
             settings: environment.settings,
-            translator: environment.translator
+            translator: environment.translator,
+            pasteboard: environment.pasteboard,
+            watcher: environment.watcher,
+            onErrorAction: { [weak self] action in
+                self?.perform(action)
+            }
         )
         self.panel = panel
 
@@ -31,7 +36,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.applyDoubleCopySettings()
             },
             onOpenSettings: { [weak self] in
-                self?.logger.info("settings requested")
+                self?.openSettings()
             }
         )
         applyDoubleCopySettings()
@@ -39,6 +44,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         environment?.watcher.stop()
+    }
+
+    private func openSettings() {
+        logger.info("settings requested")
+    }
+
+    // the settings window (Task 13) takes over open settings and the pack download
+    private func perform(_ action: ErrorAction) {
+        switch action {
+        case .openSettings:
+            openSettings()
+        case .downloadLanguagePack:
+            SystemSettingsLink.translationLanguages.open()
+        case .allowPasteboardAccess:
+            SystemSettingsLink.pasteAccess.open()
+        }
     }
 
     private func applyDoubleCopySettings() {
