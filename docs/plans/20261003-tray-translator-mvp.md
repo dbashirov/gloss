@@ -513,21 +513,23 @@ add-generic-password` до появления окна настроек в Task 
 - Create: `Sources/Engl/Panel/TranslatorPanel.swift`
 - Create: `Sources/Engl/Panel/PanelController.swift`
 - Modify: `Sources/Engl/AppDelegate.swift`
-- Modify: `Sources/Engl/StatusItemController.swift`
+- Modify: `Sources/Engl/StatusItemController.swift` (не потребовалось: колбэк уже был)
+- ➕ Create: `Sources/Engl/Panel/PanelHostingView.swift` (сигнал об изменении размера контента)
+- ➕ Create: `Sources/Engl/Panel/PanelPlaceholderView.swift` (временный контент до Task 12)
 
-- [ ] `PopupGeometry.origin(cursor:size:visibleFrame:)` и `clamp(origin:size:visibleFrame:)`
-- [ ] `TranslatorPanel`: конфигурация из Technical Details, `canBecomeKey`, Esc через
+- [x] `PopupGeometry.origin(cursor:size:visibleFrame:)` и `clamp(origin:size:visibleFrame:)`
+- [x] `TranslatorPanel`: конфигурация из Technical Details, `canBecomeKey`, Esc через
   `cancelOperation(_:)` в режиме попапа
-- [ ] `PanelController`: показ попапа у курсора / в закреплённой позиции (с clamp),
+- [x] `PanelController`: показ попапа у курсора / в закреплённой позиции (с clamp),
   `makeKeyAndOrderFront`, глобальный монитор клика вне окна и
   `didActivateApplicationNotification` (только в попапе, снимаются при скрытии),
   переключение 📌, сохранение позиции при `windowDidMove`, пересчёт origin
   при изменении размера контента
-- [ ] подключить: двойной Cmd+C → показ панели, левый клик по иконке → показ с пустым полем
-- [ ] написать тесты `PopupGeometry`: центр экрана, правый край, нижний край, второй
+- [x] подключить: двойной Cmd+C → показ панели, левый клик по иконке → показ с пустым полем
+- [x] написать тесты `PopupGeometry`: центр экрана, правый край, нижний край, второй
   монитор со смещённым `visibleFrame`, окно больше экрана, закреплённая позиция
   за пределами текущих экранов
-- [ ] run tests - must pass before next task
+- [x] run tests - must pass before next task
 
 ### Task 12: SwiftUI-содержимое окна
 
