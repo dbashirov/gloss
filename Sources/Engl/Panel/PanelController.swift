@@ -144,6 +144,8 @@ final class PanelController: NSObject, NSWindowDelegate {
     /// Brings back the pinned panel hidden for a capture that gave nothing to show.
     func restoreAfterScreenCapture() {
         panel.orderFront(nil)
+        // a translation finished while the panel was hidden did not resize it
+        scheduleResize()
     }
 
     /// Hides the popup; a pinned panel stays until its close button or Cmd+W.
