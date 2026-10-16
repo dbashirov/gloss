@@ -120,11 +120,19 @@ private struct QueryTextView: NSViewRepresentable {
             textView.font = font
             coordinator.updateHeight()
         }
-        if textView.string != text, !textView.hasMarkedText() {
-            textView.string = text
-            // undo steps of the typed text point at ranges the new text may not have
-            coordinator.undoManager.removeAllActions()
-            coordinator.updateHeight()
+        // the binding stays behind the editor while an input method composes
+        if text != coordinator.syncedText {
+            coordinator.syncedText = text
+            if textView.hasMarkedText() {
+                // a composition left in place would be committed over the new query
+                textView.inputContext?.discardMarkedText()
+            }
+            if textView.string != text {
+                textView.string = text
+                // undo steps of the typed text point at ranges the new text may not have
+                coordinator.undoManager.removeAllActions()
+                coordinator.updateHeight()
+            }
         }
         if coordinator.focusRequest != focusRequest {
             coordinator.focusRequest = focusRequest
@@ -143,6 +151,8 @@ private struct QueryTextView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: QueryTextView
         var focusRequest = 0
+        /// The query as the field last read or wrote it: another value comes from outside.
+        var syncedText: String
         /// The field's own undo history, cleared when the query is replaced from outside.
         let undoManager = UndoManager()
         private weak var textView: NSTextView?
@@ -150,6 +160,7 @@ private struct QueryTextView: NSViewRepresentable {
 
         init(parent: QueryTextView) {
             self.parent = parent
+            syncedText = parent.text
         }
 
         /// Follows the text view frame: a new width wraps the text into other lines.
@@ -193,6 +204,7 @@ private struct QueryTextView: NSViewRepresentable {
 
         func textDidChange(_ notification: Notification) {
             if let textView {
+                syncedText = textView.string
                 parent.text = textView.string
             }
             updateHeight()

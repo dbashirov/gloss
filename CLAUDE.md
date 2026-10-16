@@ -107,7 +107,12 @@ Always use `make`, never raw `swift test`:
   width it started editing with (a user-sized panel wrapped every letter onto its own line).
   The field measures its text with TextKit 1 to stay 3-6 lines high; scrollers are `.legacy`
   because overlay ones show only while scrolling. It keeps its own `UndoManager` and clears it
-  when the query is replaced from outside: stale undo steps hung Cmd+Z.
+  when the query is replaced from outside: stale undo steps hung Cmd+Z. An input method
+  composition does not reach the binding, so an outside change is told by `syncedText`, not
+  by the editor's string, and discards the composition.
+- A hidden `NSHostingController` window is 1×32 until shown: `SettingsWindowController` sets
+  the content size from `fittingSize` before `center()`. The form height (`formHeight`)
+  follows the window's screen.
 - `PanelController` defers resizing to the next main-actor turn: the hosting view reports size
   changes mid-layout. Own placements are told from user drags with a 1 pt tolerance.
 - The panel follows its content (`hostingView.sizingOptions = [.intrinsicContentSize]`) until

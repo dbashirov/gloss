@@ -9,6 +9,7 @@ final class SettingsWindowController: NSObject {
     private let model: SettingsModel
     private let window: NSWindow
     private var activationObserver: (any NSObjectProtocol)?
+    private var screenObservers: [any NSObjectProtocol] = []
 
     init(model: SettingsModel, settings: AppSettings) {
         self.model = model
@@ -31,11 +32,27 @@ final class SettingsWindowController: NSObject {
                 self?.refreshIfVisible()
             }
         }
+        // the window moved to another screen, or displays were attached or removed
+        let screenChanges = [
+            (NSWindow.didChangeScreenNotification, window as NSObject?),
+            (NSApplication.didChangeScreenParametersNotification, nil),
+        ]
+        let center = NotificationCenter.default
+        screenObservers = screenChanges.map { name, object in
+            center.addObserver(forName: name, object: object, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.fitVisibleWindow()
+                }
+            }
+        }
     }
 
     func show() {
         if !window.isVisible {
             model.reload()
+            fitHeight(to: NSScreen.main)
+            // a hidden hosting window gets its size only when shown: center() needs it now
+            window.setContentSize(window.contentViewController?.view.fittingSize ?? .zero)
             window.center()
         }
         activate()
@@ -50,6 +67,21 @@ final class SettingsWindowController: NSObject {
     private func activate() {
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+    }
+
+    // the form scrolls: the window must not go past the edge of a low screen
+    private func fitHeight(to screen: NSScreen?) {
+        guard let screen else {
+            return
+        }
+        model.formHeight = min(SettingsModel.preferredFormHeight, screen.visibleFrame.height - 40)
+    }
+
+    private func fitVisibleWindow() {
+        guard window.isVisible else {
+            return
+        }
+        fitHeight(to: window.screen)
     }
 
     private func refreshIfVisible() {

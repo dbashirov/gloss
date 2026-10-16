@@ -15,6 +15,10 @@ final class SettingsModel {
     private(set) var packState: LanguagePackState?
     private(set) var packNote: SettingsNote?
     private(set) var packDownload = LanguagePackDownload()
+    /// The form height: the form scrolls, so a low screen gets a lower window.
+    var formHeight = SettingsModel.preferredFormHeight
+
+    static let preferredFormHeight: CGFloat = 840
 
     /// Brings the settings window forward: the download dialog needs an active key window.
     @ObservationIgnored var activateWindow: () -> Void = {}

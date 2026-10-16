@@ -1,4 +1,3 @@
-import AppKit
 import EnglCore
 import SwiftUI
 
@@ -7,13 +6,6 @@ struct SettingsView: View {
     static let intervalRange = DoubleCopyDetector.intervalRange.lowerBound.milliseconds
         ... DoubleCopyDetector.intervalRange.upperBound.milliseconds
     static let intervalStep = 50.0
-    static let preferredHeight: CGFloat = 840
-
-    // the grouped form scrolls: on a low screen the window must not go past its edge
-    private static var height: CGFloat {
-        let visible = NSScreen.main?.visibleFrame.height ?? preferredHeight
-        return min(preferredHeight, visible - 40)
-    }
 
     @Bindable var model: SettingsModel
     @Bindable var settings: AppSettings
@@ -41,7 +33,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 500, height: Self.height)
+        .frame(width: 500, height: model.formHeight)
     }
 
     @ViewBuilder
