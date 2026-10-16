@@ -1,7 +1,7 @@
 import CoreGraphics
 
 /// PanelTypography derives the panel text sizes from the base size chosen in the settings,
-/// keeping the proportions of the macOS text styles.
+/// keeping the proportions of the macOS text styles, and carries the chosen typeface.
 public struct PanelTypography: Equatable, Sendable {
     public static let defaultSize: Double = 14
     public static let sizeRange: ClosedRange<Double> = 11...20
@@ -15,8 +15,10 @@ public struct PanelTypography: Equatable, Sendable {
     public let callout: CGFloat
     /// Parts of speech, notices and the translation source.
     public let caption: CGFloat
+    public let font: PanelFont
 
-    public init(baseSize: Double) {
+    public init(baseSize: Double, font: PanelFont = .system) {
+        self.font = font
         let base = CGFloat(Self.clamp(baseSize))
         body = base
         title = base + 4

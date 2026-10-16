@@ -19,7 +19,7 @@ struct TranslatorView: View {
         let isAutoSized = settings.panelSize == nil
         let resultLimit = PanelController.autoMaxHeight - chromeHeight.wrappedValue
         let scrollHeight = max(min(resultHeight.wrappedValue, resultLimit), 0)
-        let typography = PanelTypography(baseSize: settings.fontSize)
+        let typography = PanelTypography(baseSize: settings.fontSize, font: settings.panelFont)
         VStack(alignment: .leading, spacing: 10) {
             HeaderView(
                 isPinned: settings.isPinned,
@@ -50,7 +50,7 @@ struct TranslatorView: View {
                             action: notice.action,
                             perform: actions.perform
                         )
-                        .font(.system(size: typography.caption))
+                        .font(typography.font(size: typography.caption))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -70,7 +70,7 @@ struct TranslatorView: View {
                 }
             }
         }
-        .font(.system(size: typography.body))
+        .font(typography.font(size: typography.body))
         .environment(\.typography, typography)
         .padding([.horizontal, .top], 12)
         // room for the resize grip below the footer

@@ -19,7 +19,7 @@ struct FooterView: View {
                     Text(info.name)
                 }
             }
-            .font(.system(size: typography.caption))
+            .font(typography.font(size: typography.caption))
             .foregroundStyle(.secondary)
             .lineLimit(1)
 

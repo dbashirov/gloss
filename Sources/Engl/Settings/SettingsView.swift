@@ -18,7 +18,9 @@ struct SettingsView: View {
                 pasteAccess
             }
             Section("Внешний вид") {
+                fontPicker
                 fontSize
+                fontPreview
             }
             Section("Словари") {
                 YandexKeyView(key: model.key)
@@ -28,7 +30,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 500, height: 680)
+        .frame(width: 500, height: 740)
     }
 
     @ViewBuilder
@@ -71,6 +73,31 @@ struct SettingsView: View {
             }
         }
         .disabled(!settings.doubleCopyEnabled)
+    }
+
+    private var fontPicker: some View {
+        Picker("Шрифт в окне перевода", selection: $settings.panelFont) {
+            Text("Системный").tag(PanelFont.system)
+            Text("Системный скруглённый").tag(PanelFont.rounded)
+            Text("С засечками (New York)").tag(PanelFont.serif)
+            Text("Моноширинный").tag(PanelFont.monospaced)
+            Divider()
+            // a family chosen earlier and removed from the Mac stays selectable
+            if case .family(let name) = settings.panelFont, !InstalledFonts.contains(name) {
+                Text("\(name) (не установлен)").tag(settings.panelFont)
+            }
+            ForEach(InstalledFonts.families, id: \.self) { family in
+                Text(family).tag(PanelFont.family(family))
+            }
+        }
+    }
+
+    private var fontPreview: some View {
+        let typography = PanelTypography(baseSize: settings.fontSize, font: settings.panelFont)
+        return Text("The quick brown fox jumps over the lazy dog - Съешь же ещё этих булок")
+            .font(typography.font(size: typography.body))
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var fontSize: some View {

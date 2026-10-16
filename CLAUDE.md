@@ -33,8 +33,9 @@ Always use `make`, never raw `swift test`:
 - Icons are generated: `swift scripts/make-icons.swift [preview-dir]` redraws
   `Resources/AppIcon.icns` and the template `Resources/StatusIcon{,@2x}.png`; commit both
   the script and its output.
-- Panel text sizes come from `PanelTypography(baseSize: settings.fontSize)` passed down as
-  `\.typography`; views use `.font(.system(size: typography.<style>))`, not fixed text styles.
+- Panel text comes from `PanelTypography(baseSize: settings.fontSize, font: settings.panelFont)`
+  passed down as `\.typography`; views use `.font(typography.font(size: typography.<style>))`,
+  never fixed text styles or `.system(size:)`.
 
 ## Layout
 

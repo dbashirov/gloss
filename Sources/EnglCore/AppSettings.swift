@@ -18,6 +18,7 @@ public final class AppSettings {
         static let panelWidth = "panelWidth"
         static let panelHeight = "panelHeight"
         static let fontSize = "fontSize"
+        static let panelFont = "panelFont"
     }
 
     public var doubleCopyEnabled: Bool {
@@ -48,6 +49,11 @@ public final class AppSettings {
         didSet { defaults.set(fontSize, forKey: Key.fontSize) }
     }
 
+    /// Typeface of the panel text.
+    public var panelFont: PanelFont {
+        didSet { defaults.set(panelFont.storageValue, forKey: Key.panelFont) }
+    }
+
     @ObservationIgnored private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
@@ -59,6 +65,8 @@ public final class AppSettings {
         panelSize = Self.loadPanelSize(from: defaults)
         let fontSize = defaults.object(forKey: Key.fontSize) as? Double
         self.fontSize = PanelTypography.clamp(fontSize ?? PanelTypography.defaultSize)
+        let storedFont = defaults.string(forKey: Key.panelFont)
+        panelFont = storedFont.flatMap(PanelFont.init(storageValue:)) ?? .system
         if defaults.object(forKey: Key.legacyDoubleCopyInterval) != nil {
             saveDoubleCopyInterval()
         }

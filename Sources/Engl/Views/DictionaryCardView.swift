@@ -13,7 +13,7 @@ struct DictionaryCardView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(entry.word)
-                    .font(.system(size: typography.title, weight: .semibold))
+                    .font(typography.font(size: typography.title, weight: .semibold))
                 if let transcription = entry.transcription, !transcription.isEmpty {
                     Text("[\(transcription)]")
                         .foregroundStyle(.secondary)
@@ -41,7 +41,7 @@ private struct GroupView: View {
         VStack(alignment: .leading, spacing: 6) {
             if let partOfSpeech = group.partOfSpeech, !partOfSpeech.isEmpty {
                 Text(partOfSpeech)
-                    .font(.system(size: typography.caption, weight: .medium))
+                    .font(typography.font(size: typography.caption, weight: .medium))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
             }
@@ -63,12 +63,12 @@ private struct SenseView: View {
             Text("\(Text("\(number). \(sense.text)").fontWeight(.medium))\(synonyms)")
             if !sense.meanings.isEmpty {
                 Text("(\(sense.meanings.joined(separator: ", ")))")
-                    .font(.system(size: typography.callout))
+                    .font(typography.font(size: typography.callout))
                     .foregroundStyle(.secondary)
             }
             ForEach(Array(sense.examples.enumerated()), id: \.offset) { _, example in
                 Text(describe(example))
-                    .font(.system(size: typography.callout))
+                    .font(typography.font(size: typography.callout))
                     .italic()
                     .foregroundStyle(.secondary)
             }

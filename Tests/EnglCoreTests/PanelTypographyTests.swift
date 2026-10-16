@@ -12,6 +12,11 @@ struct PanelTypographyTests {
         #expect(typography.caption == 10)
     }
 
+    @Test func carriesChosenFont() {
+        #expect(PanelTypography(baseSize: 13).font == .system)
+        #expect(PanelTypography(baseSize: 13, font: .serif).font == .serif)
+    }
+
     @Test func captionNeverGetsTooSmall() {
         #expect(PanelTypography(baseSize: 11).caption == 9)
     }
