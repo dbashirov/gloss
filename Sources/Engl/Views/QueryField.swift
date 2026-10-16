@@ -122,6 +122,8 @@ private struct QueryTextView: NSViewRepresentable {
         }
         if textView.string != text, !textView.hasMarkedText() {
             textView.string = text
+            // undo steps of the typed text point at ranges the new text may not have
+            coordinator.undoManager.removeAllActions()
             coordinator.updateHeight()
         }
         if coordinator.focusRequest != focusRequest {
@@ -141,6 +143,8 @@ private struct QueryTextView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: QueryTextView
         var focusRequest = 0
+        /// The field's own undo history, cleared when the query is replaced from outside.
+        let undoManager = UndoManager()
         private weak var textView: NSTextView?
         private var reportedHeight: CGFloat?
 
@@ -192,6 +196,10 @@ private struct QueryTextView: NSViewRepresentable {
                 parent.text = textView.string
             }
             updateHeight()
+        }
+
+        func undoManager(for view: NSTextView) -> UndoManager? {
+            undoManager
         }
 
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {

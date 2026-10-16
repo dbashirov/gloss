@@ -106,7 +106,8 @@ Always use `make`, never raw `swift test`:
   SwiftUI `TextField`: a vertical `TextField` has no scroller, and its field editor kept the
   width it started editing with (a user-sized panel wrapped every letter onto its own line).
   The field measures its text with TextKit 1 to stay 3-6 lines high; scrollers are `.legacy`
-  because overlay ones show only while scrolling.
+  because overlay ones show only while scrolling. It keeps its own `UndoManager` and clears it
+  when the query is replaced from outside: stale undo steps hung Cmd+Z.
 - `PanelController` defers resizing to the next main-actor turn: the hosting view reports size
   changes mid-layout. Own placements are told from user drags with a 1 pt tolerance.
 - The panel follows its content (`hostingView.sizingOptions = [.intrinsicContentSize]`) until
