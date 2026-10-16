@@ -9,7 +9,6 @@ struct TranslatorView: View {
     let speech: Speech
     let actions: PanelActions
 
-    @FocusState private var isQueryFocused: Bool
     private let resultHeight = State(initialValue: CGFloat(0))
     // everything but the result area: header, field, notices, footer and paddings
     private let chromeHeight = State(initialValue: CGFloat(150))
@@ -26,12 +25,9 @@ struct TranslatorView: View {
                 onTogglePin: actions.togglePin,
                 onClose: actions.close
             )
-            TextField("Слово или фраза", text: $model.query, axis: .vertical)
-                .lineLimit(3...6)
-                .textFieldStyle(.roundedBorder)
-                .focused($isQueryFocused)
-                .onSubmit { translator.translate(model.query) }
-                .help("Enter - перевести, ⌥Enter - новая строка")
+            QueryField(text: $model.query, focusRequest: model.focusRequest) {
+                translator.translate(model.query)
+            }
             // notices scroll with the result: a small panel keeps the field and footer visible
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
@@ -94,9 +90,6 @@ struct TranslatorView: View {
         .overlay(alignment: .bottomTrailing) {
             ResizeGrip(onResize: actions.resize, onReset: actions.resetSize)
                 .padding(2)
-        }
-        .onChange(of: model.focusRequest) {
-            isQueryFocused = true
         }
     }
 

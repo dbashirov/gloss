@@ -100,9 +100,11 @@ Always use `make`, never raw `swift test`:
   `canBecomeKey = true`; Esc is
   caught in `sendEvent(_:)` (the field editor would take it for completion) and Cmd+W in
   `performClose(_:)`. Dragging uses `WindowDragGesture` in `HeaderView`.
-- The field editor of the wrapping (`axis: .vertical`) query field keeps the text width it
-  started editing with; `TranslatorPanel.makeFirstResponder` makes its text container track
-  the editor width, otherwise a user-sized panel wrapped every letter onto its own line.
+- The query field (`Views/QueryField.swift`) is an `NSTextView` in an `NSScrollView`, not a
+  SwiftUI `TextField`: a vertical `TextField` has no scroller, and its field editor kept the
+  width it started editing with (a user-sized panel wrapped every letter onto its own line).
+  The field measures its text with TextKit 1 to stay 3-6 lines high; scrollers are `.legacy`
+  because overlay ones show only while scrolling.
 - `PanelController` defers resizing to the next main-actor turn: the hosting view reports size
   changes mid-layout. Own placements are told from user drags with a 1 pt tolerance.
 - The panel follows its content (`hostingView.sizingOptions = [.intrinsicContentSize]`) until

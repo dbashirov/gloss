@@ -47,4 +47,28 @@ extension PanelTypography {
                 : .system(size: size, weight: weight)
         }
     }
+
+    /// Returns the same typeface as an AppKit font, for text views SwiftUI does not style.
+    @MainActor
+    func nsFont(size: CGFloat) -> NSFont {
+        let system = NSFont.systemFont(ofSize: size)
+        let design: NSFontDescriptor.SystemDesign
+        switch font {
+        case .system:
+            return system
+        case .rounded:
+            design = .rounded
+        case .serif:
+            design = .serif
+        case .monospaced:
+            design = .monospaced
+        case .family(let name):
+            let manager = NSFontManager.shared
+            return manager.font(withFamily: name, traits: [], weight: 5, size: size) ?? system
+        }
+        guard let descriptor = system.fontDescriptor.withDesign(design) else {
+            return system
+        }
+        return NSFont(descriptor: descriptor, size: size) ?? system
+    }
 }
