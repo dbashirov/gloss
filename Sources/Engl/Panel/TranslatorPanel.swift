@@ -36,6 +36,18 @@ final class TranslatorPanel: NSPanel {
         false
     }
 
+    // the field editor of a wrapping SwiftUI text field keeps the text width it started
+    // editing with: in a panel sized by the user that is a few points before the first
+    // layout, so every letter went to a new line, and resizing never updated it
+    override func makeFirstResponder(_ responder: NSResponder?) -> Bool {
+        let result = super.makeFirstResponder(responder)
+        if let editor = firstResponder as? NSTextView, let container = editor.textContainer {
+            container.widthTracksTextView = true
+            container.size.width = editor.bounds.width
+        }
+        return result
+    }
+
     // the focused query field would take Esc for word completion before cancelOperation
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown, event.keyCode == Self.escapeKeyCode, !isComposingText {

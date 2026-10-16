@@ -100,6 +100,9 @@ Always use `make`, never raw `swift test`:
   `canBecomeKey = true`; Esc is
   caught in `sendEvent(_:)` (the field editor would take it for completion) and Cmd+W in
   `performClose(_:)`. Dragging uses `WindowDragGesture` in `HeaderView`.
+- The field editor of the wrapping (`axis: .vertical`) query field keeps the text width it
+  started editing with; `TranslatorPanel.makeFirstResponder` makes its text container track
+  the editor width, otherwise a user-sized panel wrapped every letter onto its own line.
 - `PanelController` defers resizing to the next main-actor turn: the hosting view reports size
   changes mid-layout. Own placements are told from user drags with a 1 pt tolerance.
 - The panel follows its content (`hostingView.sizingOptions = [.intrinsicContentSize]`) until
