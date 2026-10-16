@@ -8,6 +8,8 @@ final class PanelModel {
     var query = ""
     /// Incremented on every show to move the focus into the query field.
     var focusRequest = 0
+    /// Incremented on every new query: shown in the panel or submitted from the field.
+    var inputRevision = 0
     var isPasteAccessDenied = false
     /// Why the last screen area gave no text; shown instead of the translation state.
     var screenTextError: ScreenTextError?

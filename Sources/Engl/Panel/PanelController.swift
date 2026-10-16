@@ -128,6 +128,24 @@ final class PanelController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// Changes with every new query; a slow source compares it to drop a stale answer.
+    var inputRevision: Int {
+        model.inputRevision
+    }
+
+    /// Takes the panel, the pinned one too, off the screen so a capture of the screen
+    /// does not include it; returns whether a pinned panel was hidden.
+    func hideForScreenCapture() -> Bool {
+        let hidesPinned = settings.isPinned && panel.isVisible
+        hide()
+        return hidesPinned
+    }
+
+    /// Brings back the pinned panel hidden for a capture that gave nothing to show.
+    func restoreAfterScreenCapture() {
+        panel.orderFront(nil)
+    }
+
     /// Hides the popup; a pinned panel stays until its close button or Cmd+W.
     func dismissPopup() {
         guard !settings.isPinned else {
@@ -208,6 +226,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     private func show() {
         model.isPasteAccessDenied = pasteboard.isAccessDenied
         model.screenTextError = nil
+        model.inputRevision += 1
         let size = contentSize()
         let origin = savedOrigin(for: size) ?? popupOrigin(for: size)
         place(CGRect(origin: origin, size: size))

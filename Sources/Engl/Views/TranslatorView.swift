@@ -27,6 +27,7 @@ struct TranslatorView: View {
             )
             QueryField(text: $model.query, focusRequest: model.focusRequest) {
                 model.screenTextError = nil
+                model.inputRevision += 1
                 translator.translate(model.query)
             }
             // notices scroll with the result: a small panel keeps the field and footer visible

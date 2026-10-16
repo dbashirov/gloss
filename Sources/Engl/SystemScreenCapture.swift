@@ -35,10 +35,18 @@ final class SystemScreenCapture: ScreenCapturing {
                 continuation.resume(throwing: error)
             }
         }
-        // Esc leaves no file
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+        guard FileManager.default.fileExists(atPath: url.path(percentEncoded: false)) else {
+            // Esc leaves no file, a crashed tool neither
+            if process.terminationReason == .uncaughtSignal {
+                throw ScreenTextError.captureFailed
+            }
             return nil
         }
-        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+        else {
+            throw ScreenTextError.captureFailed
+        }
+        return image
     }
 }

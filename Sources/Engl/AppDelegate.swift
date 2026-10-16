@@ -96,16 +96,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let environment, let panel else {
             return
         }
-        // the popup would cover the area the user wants to select
-        panel.dismissPopup()
+        let hidesPinned = panel.hideForScreenCapture()
+        let revision = panel.inputRevision
         Task {
-            switch await environment.screenText.read() {
+            let outcome = await environment.screenText.read()
+            // a query from double Cmd+C or the field during the selection is newer
+            guard panel.inputRevision == revision else {
+                return
+            }
+            switch outcome {
             case .text(let text):
                 panel.showTranslation(of: text)
             case .failed(let error):
                 panel.showScreenTextFailure(error)
             case .cancelled:
-                break
+                if hidesPinned {
+                    panel.restoreAfterScreenCapture()
+                }
             }
         }
     }
