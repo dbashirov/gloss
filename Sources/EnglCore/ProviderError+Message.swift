@@ -3,6 +3,7 @@ public enum ErrorAction: Sendable, Equatable, CaseIterable {
     case openSettings
     case downloadLanguagePack
     case allowPasteboardAccess
+    case allowScreenRecording
 
     public var title: String {
         switch self {
@@ -12,6 +13,8 @@ public enum ErrorAction: Sendable, Equatable, CaseIterable {
             "Скачать языковой пакет"
         case .allowPasteboardAccess:
             "Разрешить доступ к буферу"
+        case .allowScreenRecording:
+            "Разрешить запись экрана"
         }
     }
 }

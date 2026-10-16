@@ -8,15 +8,18 @@ final class StatusItemController: NSObject {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let settings: AppSettings
     private let onManualInput: () -> Void
+    private let onReadScreenText: () -> Void
     private let onOpenSettings: () -> Void
 
     init(
         settings: AppSettings,
         onManualInput: @escaping () -> Void,
+        onReadScreenText: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
     ) {
         self.settings = settings
         self.onManualInput = onManualInput
+        self.onReadScreenText = onReadScreenText
         self.onOpenSettings = onOpenSettings
         super.init()
         configureButton()
@@ -51,6 +54,14 @@ final class StatusItemController: NSObject {
 
     private func showMenu(from button: NSStatusBarButton) {
         let menu = NSMenu()
+        let screenText = NSMenuItem(
+            title: "Перевести текст с экрана",
+            action: #selector(readScreenText),
+            keyEquivalent: settings.screenTextHotKeyEnabled ? "2" : ""
+        )
+        screenText.keyEquivalentModifierMask = [.command, .shift]
+        menu.addItem(screenText)
+        menu.addItem(.separator())
         let doubleCopy = NSMenuItem(
             title: "Двойной Cmd+C",
             action: #selector(toggleDoubleCopy),
@@ -81,6 +92,10 @@ final class StatusItemController: NSObject {
 
     @objc private func toggleDoubleCopy() {
         settings.doubleCopyEnabled.toggle()
+    }
+
+    @objc private func readScreenText() {
+        onReadScreenText()
     }
 
     @objc private func openSettings() {

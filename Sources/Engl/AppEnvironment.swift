@@ -9,6 +9,8 @@ final class AppEnvironment {
     let translator: TranslationController
     let pasteboard: SystemPasteboard
     let watcher: ClipboardWatcher
+    let screenCapture: SystemScreenCapture
+    let screenText: ScreenTextReader
 
     init() {
         settings = AppSettings()
@@ -24,5 +26,7 @@ final class AppEnvironment {
         pasteboard = SystemPasteboard()
         // the interval comes from settings in AppDelegate.applyDoubleCopySettings
         watcher = ClipboardWatcher(pasteboard: pasteboard)
+        screenCapture = SystemScreenCapture()
+        screenText = ScreenTextReader(capture: screenCapture, recognizer: VisionTextRecognizer())
     }
 }

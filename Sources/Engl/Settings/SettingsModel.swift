@@ -4,13 +4,14 @@ import Observation
 import ServiceManagement
 
 /// SettingsModel holds the settings window state that does not live in `AppSettings`:
-/// the Yandex key, the login item, paste access and the language pack.
+/// the Yandex key, the login item, paste and screen recording access and the language pack.
 @MainActor
 @Observable
 final class SettingsModel {
     private(set) var launchState = LaunchAtLoginState.unavailable
     private(set) var launchNote: SettingsNote?
     private(set) var pasteAccess = PasteAccess.ask
+    private(set) var hasScreenRecordingAccess = false
     private(set) var packState: LanguagePackState?
     private(set) var packNote: SettingsNote?
     private(set) var packDownload = LanguagePackDownload()
@@ -19,15 +20,18 @@ final class SettingsModel {
     @ObservationIgnored var activateWindow: () -> Void = {}
     @ObservationIgnored let key: YandexKeySettings
     @ObservationIgnored private let pasteboard: SystemPasteboard
+    @ObservationIgnored private let screenCapture: SystemScreenCapture
     @ObservationIgnored private let textTranslator: any TextTranslator
 
     init(
         key: YandexKeySettings,
         pasteboard: SystemPasteboard,
+        screenCapture: SystemScreenCapture,
         textTranslator: any TextTranslator
     ) {
         self.key = key
         self.pasteboard = pasteboard
+        self.screenCapture = screenCapture
         self.textTranslator = textTranslator
     }
 
@@ -41,9 +45,16 @@ final class SettingsModel {
     func refreshStatuses() {
         refreshLaunchState()
         pasteAccess = pasteboard.access
+        hasScreenRecordingAccess = screenCapture.hasAccess
         Task {
             await refreshPackState()
         }
+    }
+
+    /// Adds Engl to Screen & System Audio Recording, asking once, and opens that list.
+    func allowScreenRecording() {
+        screenCapture.requestAccess()
+        SystemSettingsLink.screenRecording.open()
     }
 
     func setLaunchAtLogin(_ isOn: Bool) {

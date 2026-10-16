@@ -44,9 +44,11 @@ Always use `make`, never raw `swift test`:
   Keychain service), `PopupGeometry`, secrets/Keychain, `YandexKey{Store,Check,Settings}`,
   `SettingsNote`, `LanguagePack{State,Download}`, presentation helpers
   (`ProviderError+Message`, `ResultPresentation`); `Providers/` (Yandex, Apple), `Clipboard/`
-  (`ClipboardWatcher`, `DoubleCopyDetector`, `PasteboardReading`, `PasteAccess`).
+  (`ClipboardWatcher`, `DoubleCopyDetector`, `PasteboardReading`, `PasteAccess`),
+  `ScreenText/` (`ScreenTextReader`, `ScreenCapturing`/`TextRecognizing`,
+  `VisionTextRecognizer`, `RecognizedText`, `ScreenTextError`).
 - `Sources/Engl/` — `AppDelegate`, `AppEnvironment`, `MainMenu`, `StatusItemController`,
-  `SystemPasteboard`; `Panel/` (`TranslatorPanel`, `PanelController`), `Views/` (panel SwiftUI),
+  `SystemPasteboard`, `SystemScreenCapture`, `GlobalHotKey`; `Panel/` (`TranslatorPanel`, `PanelController`), `Views/` (panel SwiftUI),
   `Settings/` (settings window).
 - `Tests/EnglCoreTests/` — one suite per type, each in `<Type>Tests.swift`; `Fakes/`,
   `Helpers/` (`fixture(_:)`, `Gate`, `StubURLProtocol`, tags, `UUID.v7()`, shared test data
@@ -119,6 +121,11 @@ Always use `make`, never raw `swift test`:
 - `AppSettings` uses stored properties with `didSet`: SwiftUI does not observe computed
   properties over `UserDefaults`. `doubleCopyInterval` is a `Duration` stored as integer
   milliseconds; the legacy seconds key from earlier builds is migrated on load.
+- Screen text: `SystemScreenCapture` runs `/usr/sbin/screencapture -i -s -x <tmp.png>`
+  (the system crosshair; Esc leaves no file = cancelled) and needs Screen Recording access
+  (`CGPreflightScreenCaptureAccess`); `GlobalHotKey` is a Carbon `RegisterEventHotKey`
+  (⌘⇧2), which needs no Accessibility/Input Monitoring access. `VisionTextRecognizerTests`
+  run the real Vision on text drawn with CoreText.
 - Double-copy settings reach the watcher through one channel: `AppDelegate` subscribes with
   `AppSettings.observeDoubleCopy`; the tray menu and the settings window only change
   `AppSettings`.

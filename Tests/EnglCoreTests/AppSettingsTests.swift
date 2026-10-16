@@ -36,6 +36,7 @@ struct AppSettingsTests {
         #expect(settings.panelSize == nil)
         #expect(settings.fontSize == PanelTypography.defaultSize)
         #expect(settings.panelFont == .system)
+        #expect(settings.screenTextHotKeyEnabled)
     }
 
     @Test func reloadsSavedValues() throws {
@@ -50,6 +51,7 @@ struct AppSettingsTests {
         settings.panelSize = CGSize(width: 520.5, height: 640)
         settings.fontSize = 17
         settings.panelFont = .family("Georgia")
+        settings.screenTextHotKeyEnabled = false
 
         let reloaded = AppSettings(defaults: try makeDefaults(suiteName))
         #expect(!reloaded.doubleCopyEnabled)
@@ -59,6 +61,7 @@ struct AppSettingsTests {
         #expect(reloaded.panelSize == CGSize(width: 520.5, height: 640))
         #expect(reloaded.fontSize == 17)
         #expect(reloaded.panelFont == .family("Georgia"))
+        #expect(!reloaded.screenTextHotKeyEnabled)
     }
 
     @Test func unknownStoredFontFallsBackToSystem() throws {
@@ -196,5 +199,26 @@ struct AppSettingsTests {
 
         #expect(first == (false, Duration.milliseconds(800)))
         #expect(second == (true, Duration.milliseconds(800)))
+    }
+
+    @Test(.timeLimit(.minutes(1)))
+    func reportsScreenTextHotKeyChanges() async throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let settings = AppSettings(defaults: try makeDefaults(suiteName))
+        let (changes, continuation) = AsyncStream.makeStream(of: Bool.self)
+        settings.observeScreenTextHotKey {
+            continuation.yield(settings.screenTextHotKeyEnabled)
+        }
+        var iterator = changes.makeAsyncIterator()
+
+        settings.screenTextHotKeyEnabled = false
+        let first = try #require(await iterator.next())
+        settings.doubleCopyEnabled = false
+        settings.screenTextHotKeyEnabled = true
+        let second = try #require(await iterator.next())
+
+        #expect(!first)
+        #expect(second)
     }
 }

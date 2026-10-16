@@ -17,6 +17,9 @@ struct SettingsView: View {
                 doubleCopy
                 pasteAccess
             }
+            Section("Текст с экрана") {
+                screenText
+            }
             Section("Внешний вид") {
                 fontPicker
                 fontSize
@@ -30,7 +33,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 500, height: 740)
+        .frame(width: 500, height: 840)
     }
 
     @ViewBuilder
@@ -120,6 +123,25 @@ struct SettingsView: View {
                 Spacer()
                 Button("Открыть") {
                     SystemSettingsLink.pasteAccess.open()
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var screenText: some View {
+        Toggle("Выделить область и перевести по ⌘⇧2", isOn: $settings.screenTextHotKeyEnabled)
+        Caption("Без горячей клавиши - пункт «Перевести текст с экрана» в меню иконки")
+        LabeledContent(
+            "Доступ к записи экрана",
+            value: model.hasScreenRecordingAccess ? "Разрешён" : "Не разрешён"
+        )
+        if !model.hasScreenRecordingAccess {
+            HStack {
+                Caption("Включите Engl в «Запись экрана и системного звука» и перезапустите Engl")
+                Spacer()
+                Button("Открыть") {
+                    model.allowScreenRecording()
                 }
             }
         }

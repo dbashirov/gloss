@@ -90,6 +90,12 @@ final class PanelController: NSObject, NSWindowDelegate {
         show()
     }
 
+    /// Shows the panel with an empty query field and the reason the screen area gave no text.
+    func showScreenTextFailure(_ error: ScreenTextError) {
+        showManualInput()
+        model.screenTextError = error
+    }
+
     // only a drag by the user moves the saved position: own placements may be clamped
     func windowDidMove(_ notification: Notification) {
         if let placedFrame, PopupGeometry.isSamePosition(panel.frame.origin, placedFrame.origin) {
@@ -201,6 +207,7 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     private func show() {
         model.isPasteAccessDenied = pasteboard.isAccessDenied
+        model.screenTextError = nil
         let size = contentSize()
         let origin = savedOrigin(for: size) ?? popupOrigin(for: size)
         place(CGRect(origin: origin, size: size))

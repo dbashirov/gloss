@@ -9,6 +9,8 @@ final class PanelModel {
     /// Incremented on every show to move the focus into the query field.
     var focusRequest = 0
     var isPasteAccessDenied = false
+    /// Why the last screen area gave no text; shown instead of the translation state.
+    var screenTextError: ScreenTextError?
 }
 
 /// PanelResizePhase is a step of resizing the panel by its corner grip.

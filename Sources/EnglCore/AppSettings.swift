@@ -19,6 +19,7 @@ public final class AppSettings {
         static let panelHeight = "panelHeight"
         static let fontSize = "fontSize"
         static let panelFont = "panelFont"
+        static let screenTextHotKeyEnabled = "screenTextHotKeyEnabled"
     }
 
     public var doubleCopyEnabled: Bool {
@@ -54,6 +55,11 @@ public final class AppSettings {
         didSet { defaults.set(panelFont.storageValue, forKey: Key.panelFont) }
     }
 
+    /// Whether ⌘⇧2 selects a screen area to translate its text.
+    public var screenTextHotKeyEnabled: Bool {
+        didSet { defaults.set(screenTextHotKeyEnabled, forKey: Key.screenTextHotKeyEnabled) }
+    }
+
     @ObservationIgnored private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
@@ -67,6 +73,8 @@ public final class AppSettings {
         self.fontSize = PanelTypography.clamp(fontSize ?? PanelTypography.defaultSize)
         let storedFont = defaults.string(forKey: Key.panelFont)
         panelFont = storedFont.flatMap(PanelFont.init(storageValue:)) ?? .system
+        screenTextHotKeyEnabled = defaults.object(forKey: Key.screenTextHotKeyEnabled) as? Bool
+            ?? true
         if defaults.object(forKey: Key.legacyDoubleCopyInterval) != nil {
             saveDoubleCopyInterval()
         }
@@ -75,9 +83,26 @@ public final class AppSettings {
     /// Calls `onChange` after every change of `doubleCopyEnabled` or `doubleCopyInterval`
     /// while the settings exist; changes made in one main-actor turn are reported once.
     public func observeDoubleCopy(_ onChange: @escaping @MainActor @Sendable () -> Void) {
+        observe(onChange) { settings in
+            _ = settings.doubleCopyEnabled
+            _ = settings.doubleCopyInterval
+        }
+    }
+
+    /// Calls `onChange` after every change of `screenTextHotKeyEnabled`, like
+    /// `observeDoubleCopy(_:)`.
+    public func observeScreenTextHotKey(_ onChange: @escaping @MainActor @Sendable () -> Void) {
+        observe(onChange) { settings in
+            _ = settings.screenTextHotKeyEnabled
+        }
+    }
+
+    private func observe(
+        _ onChange: @escaping @MainActor @Sendable () -> Void,
+        reading: @escaping @MainActor @Sendable (AppSettings) -> Void
+    ) {
         withObservationTracking {
-            _ = doubleCopyEnabled
-            _ = doubleCopyInterval
+            reading(self)
         } onChange: { [weak self] in
             // runs before the new value is stored and only once per registration
             Task { @MainActor in
@@ -85,7 +110,7 @@ public final class AppSettings {
                     return
                 }
                 onChange()
-                self.observeDoubleCopy(onChange)
+                self.observe(onChange, reading: reading)
             }
         }
     }

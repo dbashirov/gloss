@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import EnglCore
 import os
 
@@ -9,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: StatusItemController?
     private var panel: PanelController?
     private var settingsWindow: SettingsWindowController?
+    private var screenTextHotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -41,6 +43,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onManualInput: { [weak panel] in
                 panel?.showManualInput()
             },
+            onReadScreenText: { [weak self] in
+                self?.readScreenText()
+            },
             onOpenSettings: { [weak self] in
                 self?.openSettings()
             }
@@ -49,6 +54,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.applyDoubleCopySettings()
         }
         applyDoubleCopySettings()
+        screenTextHotKey = GlobalHotKey(
+            keyCode: kVK_ANSI_2,
+            modifiers: cmdKey | shiftKey
+        ) { [weak self] in
+            self?.readScreenText()
+        }
+        environment.settings.observeScreenTextHotKey { [weak self] in
+            self?.applyScreenTextHotKey()
+        }
+        applyScreenTextHotKey()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -70,6 +85,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             settingsWindowController()?.showAndDownloadLanguagePack()
         case .allowPasteboardAccess:
             SystemSettingsLink.pasteAccess.open()
+        case .allowScreenRecording:
+            panel?.dismissPopup()
+            SystemSettingsLink.screenRecording.open()
+        }
+    }
+
+    /// Lets the user select a screen area and translates the text found in it.
+    private func readScreenText() {
+        guard let environment, let panel else {
+            return
+        }
+        // the popup would cover the area the user wants to select
+        panel.dismissPopup()
+        Task {
+            switch await environment.screenText.read() {
+            case .text(let text):
+                panel.showTranslation(of: text)
+            case .failed(let error):
+                panel.showScreenTextFailure(error)
+            case .cancelled:
+                break
+            }
+        }
+    }
+
+    private func applyScreenTextHotKey() {
+        guard let environment, let screenTextHotKey else {
+            return
+        }
+        guard environment.settings.screenTextHotKeyEnabled else {
+            screenTextHotKey.unregister()
+            return
+        }
+        if !screenTextHotKey.register() {
+            logger.warning("⌘⇧2 is taken by another app: screen text works from the menu only")
         }
     }
 
@@ -84,6 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let model = SettingsModel(
             key: YandexKeySettings(store: environment.keyStore, keyCheck: environment.keyCheck),
             pasteboard: environment.pasteboard,
+            screenCapture: environment.screenCapture,
             textTranslator: SystemTextTranslator()
         )
         let controller = SettingsWindowController(model: model, settings: environment.settings)

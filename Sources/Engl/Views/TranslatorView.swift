@@ -26,6 +26,7 @@ struct TranslatorView: View {
                 onClose: actions.close
             )
             QueryField(text: $model.query, focusRequest: model.focusRequest) {
+                model.screenTextError = nil
                 translator.translate(model.query)
             }
             // notices scroll with the result: a small panel keeps the field and footer visible
@@ -38,7 +39,15 @@ struct TranslatorView: View {
                             perform: actions.perform
                         )
                     }
-                    stateContent
+                    if let error = model.screenTextError {
+                        NoticeView(
+                            message: error.message,
+                            action: error.action,
+                            perform: actions.perform
+                        )
+                    } else {
+                        stateContent
+                    }
                     if case .result(let routed) = translator.state,
                        let notice = routed.fallbackNotice {
                         NoticeView(
