@@ -19,6 +19,7 @@ struct TranslatorView: View {
         let isAutoSized = settings.panelSize == nil
         let resultLimit = PanelController.autoMaxHeight - chromeHeight.wrappedValue
         let scrollHeight = max(min(resultHeight.wrappedValue, resultLimit), 0)
+        let typography = PanelTypography(baseSize: settings.fontSize)
         VStack(alignment: .leading, spacing: 10) {
             HeaderView(
                 isPinned: settings.isPinned,
@@ -26,11 +27,11 @@ struct TranslatorView: View {
                 onClose: actions.close
             )
             TextField("Слово или фраза", text: $model.query, axis: .vertical)
-                .lineLimit(1...6)
+                .lineLimit(3...6)
                 .textFieldStyle(.roundedBorder)
                 .focused($isQueryFocused)
                 .onSubmit { translator.translate(model.query) }
-                .help("Enter — перевести, ⌥Enter — новая строка")
+                .help("Enter - перевести, ⌥Enter - новая строка")
             // notices scroll with the result: a small panel keeps the field and footer visible
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
@@ -49,7 +50,7 @@ struct TranslatorView: View {
                             action: notice.action,
                             perform: actions.perform
                         )
-                        .font(.caption)
+                        .font(.system(size: typography.caption))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -69,6 +70,8 @@ struct TranslatorView: View {
                 }
             }
         }
+        .font(.system(size: typography.body))
+        .environment(\.typography, typography)
         .padding([.horizontal, .top], 12)
         // room for the resize grip below the footer
         .padding(.bottom, 16)

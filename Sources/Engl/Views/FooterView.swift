@@ -6,6 +6,7 @@ struct FooterView: View {
     let providerID: String
     let onCopy: () -> Void
 
+    @Environment(\.typography) private var typography
     private let copyCount = State(initialValue: 0)
 
     var body: some View {
@@ -18,7 +19,7 @@ struct FooterView: View {
                     Text(info.name)
                 }
             }
-            .font(.caption)
+            .font(.system(size: typography.caption))
             .foregroundStyle(.secondary)
             .lineLimit(1)
 

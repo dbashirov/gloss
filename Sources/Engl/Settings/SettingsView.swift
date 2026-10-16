@@ -17,6 +17,9 @@ struct SettingsView: View {
                 doubleCopy
                 pasteAccess
             }
+            Section("Внешний вид") {
+                fontSize
+            }
             Section("Словари") {
                 YandexKeyView(key: model.key)
             }
@@ -25,7 +28,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 500, height: 620)
+        .frame(width: 500, height: 680)
     }
 
     @ViewBuilder
@@ -68,6 +71,17 @@ struct SettingsView: View {
             }
         }
         .disabled(!settings.doubleCopyEnabled)
+    }
+
+    private var fontSize: some View {
+        LabeledContent("Размер шрифта в окне перевода") {
+            HStack {
+                Slider(value: $settings.fontSize, in: PanelTypography.sizeRange, step: 1)
+                Text("\(Int(settings.fontSize)) pt")
+                    .monospacedDigit()
+                    .frame(width: 60, alignment: .trailing)
+            }
+        }
     }
 
     @ViewBuilder

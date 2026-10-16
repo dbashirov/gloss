@@ -16,6 +16,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN/Engl" "$APP/Contents/MacOS/Engl"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns Resources/StatusIcon.png Resources/StatusIcon@2x.png \
+    "$APP/Contents/Resources/"
 plutil -lint "$APP/Contents/Info.plist" >/dev/null
 
 codesign --force --timestamp=none --sign "$IDENTITY" "$APP"

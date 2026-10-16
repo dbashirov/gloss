@@ -7,11 +7,13 @@ struct DictionaryCardView: View {
     let entry: DictionaryEntry
     let onSpeak: () -> Void
 
+    @Environment(\.typography) private var typography
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(entry.word)
-                    .font(.title2.weight(.semibold))
+                    .font(.system(size: typography.title, weight: .semibold))
                 if let transcription = entry.transcription, !transcription.isEmpty {
                     Text("[\(transcription)]")
                         .foregroundStyle(.secondary)
@@ -33,11 +35,13 @@ struct DictionaryCardView: View {
 private struct GroupView: View {
     let group: PartOfSpeechGroup
 
+    @Environment(\.typography) private var typography
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let partOfSpeech = group.partOfSpeech, !partOfSpeech.isEmpty {
                 Text(partOfSpeech)
-                    .font(.caption.weight(.medium))
+                    .font(.system(size: typography.caption, weight: .medium))
                     .foregroundStyle(.secondary)
                     .textCase(.uppercase)
             }
@@ -52,17 +56,19 @@ private struct SenseView: View {
     let number: Int
     let sense: Sense
 
+    @Environment(\.typography) private var typography
+
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text("\(Text("\(number). \(sense.text)").fontWeight(.medium))\(synonyms)")
             if !sense.meanings.isEmpty {
                 Text("(\(sense.meanings.joined(separator: ", ")))")
-                    .font(.callout)
+                    .font(.system(size: typography.callout))
                     .foregroundStyle(.secondary)
             }
             ForEach(Array(sense.examples.enumerated()), id: \.offset) { _, example in
                 Text(describe(example))
-                    .font(.callout)
+                    .font(.system(size: typography.callout))
                     .italic()
                     .foregroundStyle(.secondary)
             }

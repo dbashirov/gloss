@@ -22,11 +22,19 @@ Always use `make`, never raw `swift test`:
   passes `-plugin-path` to `<toolchain>/usr/lib/swift/host/plugins/testing`.
 - Stale `*.private.swiftinterface` in CLT `usr/lib/swift/pm/{ManifestAPI,PluginAPI}` break
   any `Package.swift` with `platforms` — delete them if the manifest stops compiling.
-- No `SwiftUIMacros` plugin: `@State` does not compile. Use
-  `private let x = State(initialValue: ...)` and `x.wrappedValue` / `x.projectedValue`.
-  `@FocusState`, `@Bindable`, `@Observable` work.
+- No `SwiftUIMacros` plugin: `@State` and `@Entry` do not compile. Use
+  `private let x = State(initialValue: ...)` and `x.wrappedValue` / `x.projectedValue`;
+  declare environment values with a manual `EnvironmentKey` (see `Views/Typography.swift`).
+  `@FocusState`, `@Bindable`, `@Observable`, `@Environment` work.
 - Bin path: `swift build --show-bin-path`, never hardcode `.build/release`.
 - The `Engl` target has no resources (generated `Bundle.module` crashes inside `.app`).
+  Bundle files live in `Resources/` and are copied by `scripts/build-app.sh`; load them from
+  `Bundle.main` (`NSImage(named:)`) with a fallback for runs outside `Engl.app`.
+- Icons are generated: `swift scripts/make-icons.swift [preview-dir]` redraws
+  `Resources/AppIcon.icns` and the template `Resources/StatusIcon{,@2x}.png`; commit both
+  the script and its output.
+- Panel text sizes come from `PanelTypography(baseSize: settings.fontSize)` passed down as
+  `\.typography`; views use `.font(.system(size: typography.<style>))`, not fixed text styles.
 
 ## Layout
 

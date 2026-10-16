@@ -26,11 +26,11 @@ final class StatusItemController: NSObject {
         guard let button = statusItem.button else {
             return
         }
-        let image = NSImage(
-            systemSymbolName: "character.book.closed",
-            accessibilityDescription: "Engl"
-        )
+        // the bundled icon is missing when the binary runs outside Engl.app
+        let image = NSImage(named: "StatusIcon")
+            ?? NSImage(systemSymbolName: "translate", accessibilityDescription: "Engl")
         image?.isTemplate = true
+        image?.accessibilityDescription = "Engl"
         button.image = image
         button.target = self
         button.action = #selector(buttonClicked(_:))

@@ -7,7 +7,6 @@ struct TextResultView: View {
 
     var body: some View {
         Text(translation.translation)
-            .font(.body)
             .fixedSize(horizontal: false, vertical: true)
             .textSelection(.enabled)
     }

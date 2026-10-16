@@ -8,10 +8,11 @@ import SwiftUI
 /// the user resizes it by an edge or the corner grip; that size is kept.
 @MainActor
 final class PanelController: NSObject, NSWindowDelegate {
-    static let autoWidth: CGFloat = 380
-    static let autoMaxHeight: CGFloat = 480
-    /// Fits the header, a six-line query field and the footer; the rest scrolls.
-    static let minSize = CGSize(width: 300, height: 240)
+    static let autoWidth: CGFloat = 420
+    static let autoMaxHeight: CGFloat = 520
+    /// Fits the header, a six-line query field at the largest font and the footer;
+    /// the rest scrolls.
+    static let minSize = CGSize(width: 320, height: 300)
 
     private let panel = TranslatorPanel()
     private let settings: AppSettings

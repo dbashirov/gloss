@@ -34,6 +34,7 @@ struct AppSettingsTests {
         #expect(!settings.isPinned)
         #expect(settings.pinnedTopLeft == nil)
         #expect(settings.panelSize == nil)
+        #expect(settings.fontSize == PanelTypography.defaultSize)
     }
 
     @Test func reloadsSavedValues() throws {
@@ -46,6 +47,7 @@ struct AppSettingsTests {
         settings.isPinned = true
         settings.pinnedTopLeft = CGPoint(x: 120.5, y: -40)
         settings.panelSize = CGSize(width: 520.5, height: 640)
+        settings.fontSize = 17
 
         let reloaded = AppSettings(defaults: try makeDefaults(suiteName))
         #expect(!reloaded.doubleCopyEnabled)
@@ -53,6 +55,16 @@ struct AppSettingsTests {
         #expect(reloaded.isPinned)
         #expect(reloaded.pinnedTopLeft == CGPoint(x: 120.5, y: -40))
         #expect(reloaded.panelSize == CGSize(width: 520.5, height: 640))
+        #expect(reloaded.fontSize == 17)
+    }
+
+    @Test func clampsStoredFontSize() throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let defaults = try makeDefaults(suiteName)
+        defaults.set(99.0, forKey: AppSettings.Key.fontSize)
+
+        #expect(AppSettings(defaults: defaults).fontSize == PanelTypography.sizeRange.upperBound)
     }
 
     @Test func clearsPanelSize() throws {

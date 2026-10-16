@@ -8,6 +8,8 @@
 	<string>Engl</string>
 	<key>CFBundleExecutable</key>
 	<string>Engl</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.dbashirov.engl</string>
 	<key>CFBundleInfoDictionaryVersion</key>

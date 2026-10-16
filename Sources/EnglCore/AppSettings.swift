@@ -17,6 +17,7 @@ public final class AppSettings {
         static let pinnedTopLeftY = "pinnedTopLeftY"
         static let panelWidth = "panelWidth"
         static let panelHeight = "panelHeight"
+        static let fontSize = "fontSize"
     }
 
     public var doubleCopyEnabled: Bool {
@@ -42,6 +43,11 @@ public final class AppSettings {
         didSet { savePanelSize() }
     }
 
+    /// Base text size of the panel in points, within `PanelTypography.sizeRange`.
+    public var fontSize: Double {
+        didSet { defaults.set(fontSize, forKey: Key.fontSize) }
+    }
+
     @ObservationIgnored private let defaults: UserDefaults
 
     public init(defaults: UserDefaults = .standard) {
@@ -51,6 +57,8 @@ public final class AppSettings {
         isPinned = defaults.bool(forKey: Key.isPinned)
         pinnedTopLeft = Self.loadPinnedTopLeft(from: defaults)
         panelSize = Self.loadPanelSize(from: defaults)
+        let fontSize = defaults.object(forKey: Key.fontSize) as? Double
+        self.fontSize = PanelTypography.clamp(fontSize ?? PanelTypography.defaultSize)
         if defaults.object(forKey: Key.legacyDoubleCopyInterval) != nil {
             saveDoubleCopyInterval()
         }
