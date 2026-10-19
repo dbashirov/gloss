@@ -10,7 +10,9 @@ Always use `make`, never raw `swift test`:
 - `make test` — unit tests (Swift Testing)
 - `make coverage` — tests + `llvm-cov` report for `Sources/EnglCore`
 - `make app` — release `.app` in `build/Engl.app` (`scripts/build-app.sh`), signed with
-  `CODESIGN_IDENTITY` or ad-hoc
+  `CODESIGN_IDENTITY`, else `Engl Local Signing` when the keychain has it, else ad-hoc. An
+  ad-hoc rebuild changes the cdhash: Keychain asks again and the Screen Recording grant
+  silently stops matching (`tccutil reset ScreenCapture com.dbashirov.engl`, then grant again)
 - `make run` / `make install` — build and open / copy to `/Applications`. `make run` does not
   restart a running instance (`open` just activates it): quit Engl first (`pkill -x Engl`)
   before verifying a rebuild. Never run `make install` or register login items unasked.
@@ -130,7 +132,9 @@ Always use `make`, never raw `swift test`:
   milliseconds; the legacy seconds key from earlier builds is migrated on load.
 - Screen text: `SystemScreenCapture` runs `/usr/sbin/screencapture -i -s -x <tmp.png>`
   (the system crosshair; Esc leaves no file = cancelled) and needs Screen Recording access
-  (`CGPreflightScreenCaptureAccess`); `GlobalHotKey` is a Carbon `RegisterEventHotKey`
+  (`CGPreflightScreenCaptureAccess`). The capture file is read into `Data` before it is
+  removed: a `CGImage` from `CGImageSourceCreateWithURL` decodes lazily and Vision then
+  sees an empty image; `GlobalHotKey` is a Carbon `RegisterEventHotKey`
   (`AppSettings.screenTextHotKey`, ⌘⇧2 by default), which needs no Accessibility/Input
   Monitoring access. `HotKeyRecorder` suspends it while recording (Carbon would take the
   press first) and takes the press with a local `NSEvent` monitor; `HotKey.isAllowed` wants

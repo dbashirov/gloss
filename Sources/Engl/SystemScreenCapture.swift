@@ -42,7 +42,9 @@ final class SystemScreenCapture: ScreenCapturing {
             }
             return nil
         }
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+        // an image made from the file decodes it lazily, after the deferred removal
+        guard let data = try? Data(contentsOf: url),
+              let source = CGImageSourceCreateWithData(data as CFData, nil),
               let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
         else {
             throw ScreenTextError.captureFailed

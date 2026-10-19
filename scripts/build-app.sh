@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 # Builds build/Engl.app from the release binary and signs it.
-# CODESIGN_IDENTITY selects a stable signing identity; without it the bundle is
-# signed ad-hoc and Keychain asks for access again after every rebuild.
+# CODESIGN_IDENTITY selects a stable signing identity, "Engl Local Signing" by default
+# when the keychain has it; otherwise the bundle is signed ad-hoc, and Keychain and
+# Screen Recording ask for access again after every rebuild.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
 APP=build/Engl.app
+LOCAL_IDENTITY="Engl Local Signing"
+if [[ -z "${CODESIGN_IDENTITY:-}" ]] &&
+    security find-identity -p codesigning | grep -q "\"$LOCAL_IDENTITY\""; then
+    CODESIGN_IDENTITY="$LOCAL_IDENTITY"
+fi
 IDENTITY="${CODESIGN_IDENTITY:--}"
 
 swift build -c release --product Engl
