@@ -2,17 +2,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "Engl",
+    name: "Gloss",
     platforms: [.macOS(.v26)],
     products: [
-        .executable(name: "Engl", targets: ["Engl"]),
+        .executable(name: "Gloss", targets: ["Gloss"]),
     ],
     targets: [
-        .target(name: "EnglCore"),
-        .executableTarget(name: "Engl", dependencies: ["EnglCore"]),
+        .target(name: "GlossCore"),
+        .executableTarget(name: "Gloss", dependencies: ["GlossCore"]),
         .testTarget(
-            name: "EnglCoreTests",
-            dependencies: ["EnglCore"],
+            name: "GlossCoreTests",
+            dependencies: ["GlossCore"],
             resources: [.process("Fixtures")]
         ),
     ]

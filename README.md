@@ -1,4 +1,4 @@
-# Engl
+# Gloss
 
 Переводчик en↔ru в меню-баре macOS для изучения английского. Двойной Cmd+C в любом
 приложении — и рядом с курсором появляется окно с переводом:
@@ -36,22 +36,22 @@
 
 ## Сборка и запуск
 
-| Команда         | Что делает                                                       |
-|-----------------|------------------------------------------------------------------|
-| `make build`    | debug-сборка пакета                                              |
-| `make test`     | unit-тесты (Swift Testing)                                       |
-| `make coverage` | тесты с покрытием и отчёт `llvm-cov` по `Sources/EnglCore`       |
-| `make app`      | release-сборка и упаковка в `build/Engl.app` с подписью          |
-| `make run`      | `make app` + запуск `build/Engl.app`                             |
-| `make install`  | `make app` + копия в `/Applications/Engl.app`                    |
-| `make clean`    | `swift package clean` (артефакты в `.build`) и удаление `build`  |
+| Команда         | Что делает                                                      |
+|-----------------|-----------------------------------------------------------------|
+| `make build`    | debug-сборка пакета                                             |
+| `make test`     | unit-тесты (Swift Testing)                                      |
+| `make coverage` | тесты с покрытием и отчёт `llvm-cov` по `Sources/GlossCore`     |
+| `make app`      | release-сборка и упаковка в `build/Gloss.app` с подписью        |
+| `make run`      | `make app` + запуск `build/Gloss.app`                           |
+| `make install`  | `make app` + копия в `/Applications/Gloss.app`                  |
+| `make clean`    | `swift package clean` (артефакты в `.build`) и удаление `build` |
 
 Приложение живёт только в меню-баре (иконка с двумя облачками «A» и «Я»), в Dock его нет.
 
 Иконки рисует скрипт `swift scripts/make-icons.swift`: он пересоздаёт
 `Resources/AppIcon.icns` и `Resources/StatusIcon{,@2x}.png`, `make app` кладёт их в бандл.
 
-Перед `make run` и `make install` закройте запущенный Engl (меню трея → «Выход»):
+Перед `make run` и `make install` закройте запущенный Gloss (меню трея → «Выход»):
 `open` не перезапускает уже работающее приложение, а только активирует его со старым
 бинарником. Не держите одновременно копии из `build/` и `/Applications`: обе следят
 за буфером, и на двойной Cmd+C откроются два окна.
@@ -65,7 +65,7 @@
 2. Правый клик по иконке в трее → «Настройки…» → раздел «Словари».
 3. Вставить ключ, нажать «Сохранить», затем «Проверить».
 
-Ключ хранится в Keychain (`service = com.dbashirov.engl`, `account = yandex-dictionary`).
+Ключ хранится в Keychain (`service = com.dbashirov.gloss`, `account = yandex-dictionary`).
 Без ключа слова переводятся через Apple Translation — без словарной карточки.
 
 ### Подпись кода (`CODESIGN_IDENTITY`)
@@ -73,10 +73,10 @@
 Без стабильной подписи `.app` подписывается ad-hoc. У такой подписи designated
 requirement - хеш бинарника, поэтому после каждой пересборки macOS считает приложение
 новым: Keychain снова спрашивает доступ к ключу, а разрешение на запись экрана
-перестаёт действовать (в настройках Engl остаётся включённым, но не работает).
+перестаёт действовать (в настройках Gloss остаётся включённым, но не работает).
 Стабильный self-signed сертификат это решает:
 
-1. Создать сертификат `Engl Local Signing` для подписи кода. Через «Связку ключей»:
+1. Создать сертификат `Gloss Local Signing` для подписи кода. Через «Связку ключей»:
    меню «Связка ключей» → «Ассистент сертификации» → «Создать сертификат…», тип
    удостоверения «Самоподписанный корневой», тип сертификата «Подписание кода».
    Или из терминала:
@@ -87,7 +87,7 @@ requirement - хеш бинарника, поэтому после каждой 
    x509_extensions = ext
    prompt = no
    [dn]
-   CN = Engl Local Signing
+   CN = Gloss Local Signing
    [ext]
    basicConstraints = critical, CA:false
    keyUsage = critical, digitalSignature
@@ -96,37 +96,37 @@ requirement - хеш бинарника, поэтому после каждой 
    openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -config cert.cnf \
        -keyout key.pem -out cert.pem
    openssl pkcs12 -export -legacy -inkey key.pem -in cert.pem \
-       -name "Engl Local Signing" -out cert.p12 -passout pass:engl
-   security import cert.p12 -k ~/Library/Keychains/login.keychain-db -P engl \
+       -name "Gloss Local Signing" -out cert.p12 -passout pass:gloss
+   security import cert.p12 -k ~/Library/Keychains/login.keychain-db -P gloss \
        -T /usr/bin/codesign
    rm key.pem cert.p12
    ```
 2. Проверить, что сертификат виден: `security find-identity -p codesigning`.
-3. `make app` сам подписывает сертификатом `Engl Local Signing`, если он есть в связке
+3. `make app` сам подписывает сертификатом `Gloss Local Signing`, если он есть в связке
    ключей. Другой сертификат задаётся переменной `CODESIGN_IDENTITY`.
 4. После смены подписи один раз: Keychain спросит доступ к ключу Yandex («Разрешать
    всегда»), а старое разрешение на запись экрана нужно сбросить
-   (`tccutil reset ScreenCapture com.dbashirov.engl`) и выдать заново.
+   (`tccutil reset ScreenCapture com.dbashirov.gloss`) и выдать заново.
 
 ### Доступ к буферу обмена
 
 macOS спрашивает разрешение, когда приложение читает чужой буфер. При первом двойном
 Cmd+C выберите «Разрешать всегда». Если доступ запрещён, окно покажет подсказку;
 включить его можно в «Системные настройки → Конфиденциальность и безопасность →
-Вставка из других приложений» (кнопка есть и в настройках Engl).
+Вставка из других приложений» (кнопка есть и в настройках Gloss).
 
 ### Доступ к записи экрана
 
 Нужен для перевода текста с экрана: без него снимок приходит без содержимого окон.
-При первом ⌘⇧2 macOS добавит Engl в «Системные настройки → Конфиденциальность и
+При первом ⌘⇧2 macOS добавит Gloss в «Системные настройки → Конфиденциальность и
 безопасность → Запись экрана и системного звука», а окно перевода покажет кнопку
-«Разрешить запись экрана». Включите Engl и перезапустите его. Статус и кнопка есть
-в настройках Engl, раздел «Текст с экрана». С ad-hoc подписью разрешение приходится выдавать
+«Разрешить запись экрана». Включите Gloss и перезапустите его. Статус и кнопка есть
+в настройках Gloss, раздел «Текст с экрана». С ad-hoc подписью разрешение приходится выдавать
 заново после каждой пересборки - см. «Подпись кода».
 
 ### Языковой пакет en↔ru
 
-Нужен Apple Translation. Настройки Engl → «Языковой пакет» → «Скачать» или
+Нужен Apple Translation. Настройки Gloss → «Языковой пакет» → «Скачать» или
 «Системные настройки → Основные → Язык и регион → Языки перевода» (английский и русский).
 
 ## Использование
@@ -176,7 +176,7 @@ Cmd+C выберите «Разрешать всегда». Если досту�
 
 ### Как срабатывает двойной Cmd+C
 
-Engl не перехватывает клавиши: раз в 100 мс он сравнивает `changeCount` буфера обмена,
+Gloss не перехватывает клавиши: раз в 100 мс он сравнивает `changeCount` буфера обмена,
 поэтому разрешения «Универсальный доступ» и «Мониторинг ввода» не нужны. Срабатывают
 любые два копирования в пределах интервала, не только Cmd+C; сам текст читается только
 после срабатывания. Все изменения буфера за одну проверку считаются одним копированием:
@@ -210,7 +210,7 @@ Engl не перехватывает клавиши: раз в 100 мс он с�
 
 1. Закрыть запущенную копию (меню трея → «Выход»), `make install` (приложение
    не запускается само).
-2. `open /Applications/Engl.app`.
+2. `open /Applications/Gloss.app`.
 3. Настройки → «Основные» → «Запускать при входе в систему».
 
 У копий из `build/` и `~/Applications` переключатель неактивен. Если macOS требует
@@ -218,13 +218,13 @@ Engl не перехватывает клавиши: раз в 100 мс он с�
 
 ## Архитектура
 
-- `EnglCore` (library) — вся логика без AppKit/SwiftUI: модели, `TextNormalizer`,
+- `GlossCore` (library) — вся логика без AppKit/SwiftUI: модели, `TextNormalizer`,
   `QueryClassifier`, `Router` с кешем, провайдеры, `ClipboardWatcher` и
   `DoubleCopyDetector`, `TranslationController`, `AppSettings`, `PopupGeometry`,
   `ScreenTextReader` (выделение области → Vision → склейка строк).
   Платформенные API (HTTP, буфер, Keychain, Apple Translation, UserDefaults) скрыты
   за протоколами и в тестах подменяются фейками.
-- `Engl` (executable) - `AppDelegate`, трей, горячая клавиша (Carbon), захват области
+- `Gloss` (executable) - `AppDelegate`, трей, горячая клавиша (Carbon), захват области
   через `screencapture -i -s`, адаптер `NSPasteboard`, плавающая
   `NSPanel`, SwiftUI-вьюхи, окно настроек. Ресурсов в target нет.
 

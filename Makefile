@@ -17,18 +17,18 @@ coverage:
 	swift test --enable-code-coverage $(TEST_FLAGS)
 	BIN=$$(swift build --show-bin-path) && \
 	CODECOV=$$(dirname "$$(swift test --show-codecov-path)") && \
-	xcrun llvm-cov report "$$BIN/EnglCoreTests.xctest/Contents/MacOS/EnglCoreTests" \
-		-instr-profile="$$CODECOV/default.profdata" "$(CURDIR)/Sources/EnglCore"
+	xcrun llvm-cov report "$$BIN/GlossCoreTests.xctest/Contents/MacOS/GlossCoreTests" \
+		-instr-profile="$$CODECOV/default.profdata" "$(CURDIR)/Sources/GlossCore"
 
 app:
 	scripts/build-app.sh
 
 run: app
-	open build/Engl.app
+	open build/Gloss.app
 
 install: app
-	rm -rf /Applications/Engl.app
-	ditto build/Engl.app /Applications/Engl.app
+	rm -rf /Applications/Gloss.app
+	ditto build/Gloss.app /Applications/Gloss.app
 
 clean:
 	swift package clean

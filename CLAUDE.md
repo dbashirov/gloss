@@ -1,4 +1,4 @@
-# Engl
+# Gloss
 
 macOS menu-bar en↔ru translator (Swift 6, SwiftPM, SwiftUI + AppKit). User-facing docs: README.md (Russian).
 
@@ -8,13 +8,13 @@ Always use `make`, never raw `swift test`:
 
 - `make build` — debug build
 - `make test` — unit tests (Swift Testing)
-- `make coverage` — tests + `llvm-cov` report for `Sources/EnglCore`
-- `make app` — release `.app` in `build/Engl.app` (`scripts/build-app.sh`), signed with
-  `CODESIGN_IDENTITY`, else `Engl Local Signing` when the keychain has it, else ad-hoc. An
+- `make coverage` — tests + `llvm-cov` report for `Sources/GlossCore`
+- `make app` — release `.app` in `build/Gloss.app` (`scripts/build-app.sh`), signed with
+  `CODESIGN_IDENTITY`, else `Gloss Local Signing` when the keychain has it, else ad-hoc. An
   ad-hoc rebuild changes the cdhash: Keychain asks again and the Screen Recording grant
-  silently stops matching (`tccutil reset ScreenCapture com.dbashirov.engl`, then grant again)
+  silently stops matching (`tccutil reset ScreenCapture com.dbashirov.gloss`, then grant again)
 - `make run` / `make install` — build and open / copy to `/Applications`. `make run` does not
-  restart a running instance (`open` just activates it): quit Engl first (`pkill -x Engl`)
+  restart a running instance (`open` just activates it): quit Gloss first (`pkill -x Gloss`)
   before verifying a rebuild. Never run `make install` or register login items unasked.
 - `make clean` — `swift package clean` + `rm -rf build`
 
@@ -29,9 +29,9 @@ Always use `make`, never raw `swift test`:
   declare environment values with a manual `EnvironmentKey` (see `Views/Typography.swift`).
   `@FocusState`, `@Bindable`, `@Observable`, `@Environment` work.
 - Bin path: `swift build --show-bin-path`, never hardcode `.build/release`.
-- The `Engl` target has no resources (generated `Bundle.module` crashes inside `.app`).
+- The `Gloss` target has no resources (generated `Bundle.module` crashes inside `.app`).
   Bundle files live in `Resources/` and are copied by `scripts/build-app.sh`; load them from
-  `Bundle.main` (`NSImage(named:)`) with a fallback for runs outside `Engl.app`.
+  `Bundle.main` (`NSImage(named:)`) with a fallback for runs outside `Gloss.app`.
 - Icons are generated: `swift scripts/make-icons.swift [preview-dir]` redraws
   `Resources/AppIcon.icns` and the template `Resources/StatusIcon{,@2x}.png`; commit both
   the script and its output.
@@ -41,7 +41,7 @@ Always use `make`, never raw `swift test`:
 
 ## Layout
 
-- `Sources/EnglCore/` — models (incl. `Language` codes), `TextNormalizer`, `QueryClassifier`,
+- `Sources/GlossCore/` — models (incl. `Language` codes), `TextNormalizer`, `QueryClassifier`,
   `Router`, `TranslationController`, `AppSettings`, `AppIdentity` (bundle ID, log subsystem,
   Keychain service), `PopupGeometry`, `HotKey`, secrets/Keychain, `YandexKey{Store,Check,Settings}`,
   `SettingsNote`, `LanguagePack{State,Download}`, presentation helpers
@@ -49,20 +49,20 @@ Always use `make`, never raw `swift test`:
   (`ClipboardWatcher`, `DoubleCopyDetector`, `PasteboardReading`, `PasteAccess`),
   `ScreenText/` (`ScreenTextReader`, `ScreenCapturing`/`TextRecognizing`,
   `VisionTextRecognizer`, `RecognizedText`, `ScreenTextError`).
-- `Sources/Engl/` — `AppDelegate`, `AppEnvironment`, `MainMenu`, `StatusItemController`,
+- `Sources/Gloss/` — `AppDelegate`, `AppEnvironment`, `MainMenu`, `StatusItemController`,
   `SystemPasteboard`, `SystemScreenCapture`, `GlobalHotKey`, `KeyNames`; `Panel/`
   (`TranslatorPanel`, `PanelController`), `Views/` (panel SwiftUI), `Settings/` (settings
   window, `HotKeyRecorder`).
-- `Tests/EnglCoreTests/` — one suite per type, each in `<Type>Tests.swift`; `Fakes/`,
+- `Tests/GlossCoreTests/` — one suite per type, each in `<Type>Tests.swift`; `Fakes/`,
   `Helpers/` (`fixture(_:)`, `Gate`, `StubURLProtocol`, tags, `UUID.v7()`, shared test data
   `runQuery`/`sentenceQuery`/`runCard`/`runText`/`UnexpectedError` in `TestData.swift`),
   `Fixtures/` (Yandex JSON).
 
 ## Module rules
 
-- `EnglCore` (library): all logic, no AppKit/SwiftUI imports. `Engl` (executable): AppKit/SwiftUI
+- `GlossCore` (library): all logic, no AppKit/SwiftUI imports. `Gloss` (executable): AppKit/SwiftUI
   shell only; keep it thin and move testable logic (incl. pure UI math like `PopupGeometry`)
-  into `EnglCore`.
+  into `GlossCore`.
 - New translation sources are added only as a `TranslationProvider` and registered in
   `AppEnvironment`; results go into the source-independent `DictionaryEntry`/`TextTranslation`.
   Providers map failures to `ProviderError` (so `Router` falls back) and cancellation to
@@ -71,12 +71,12 @@ Always use `make`, never raw `swift test`:
   a `Router` priority and a row in `ProviderErrorMessageTests.mapsErrorToAction`
   (`CaseIterable` tests cover the rest).
 - Platform APIs (HTTP, pasteboard, Keychain, Apple Translation, UserDefaults, clock) stay behind
-  protocols/injection; fakes live in `Tests/EnglCoreTests/Fakes`.
+  protocols/injection; fakes live in `Tests/GlossCoreTests/Fakes`.
 
 ## Testing conventions
 
-- Swift Testing (`import Testing`, `@Test`, `#expect`, `#require`), `@testable import EnglCore`.
-- Every code change in `EnglCore` comes with tests; UI in `Engl` is checked manually.
+- Swift Testing (`import Testing`, `@Test`, `#expect`, `#require`), `@testable import GlossCore`.
+- Every code change in `GlossCore` comes with tests; UI in `Gloss` is checked manually.
 - Fakes: `FakeProvider`, `FakeHTTPClient`, `FakeTextTranslator` (status per direction),
   `FakeSecretStore` are thread-safe via `Mutex` from `Synchronization`; `FakePasteboard` is
   `@MainActor` like `PasteboardReading`. Tests of other types use these fakes, not
@@ -85,9 +85,9 @@ Always use `make`, never raw `swift test`:
 - Use `Gate` (ignores cancellation) to hold a fake provider; suites that wait on streams
   carry `.timeLimit(.minutes(1))`. A test that cancels "the current task" does it inside
   its own `Task { }`, never the test's task.
-- Yandex JSON fixtures in `Tests/EnglCoreTests/Fixtures/`, loaded via `Bundle.module`.
-- Keychain tests use a unique service `com.dbashirov.engl.tests.<UUIDv7>` and delete it in
-  `defer`; never touch the real `com.dbashirov.engl` items. They are tagged `.keychain`
+- Yandex JSON fixtures in `Tests/GlossCoreTests/Fixtures/`, loaded via `Bundle.module`.
+- Keychain tests use a unique service `com.dbashirov.gloss.tests.<UUIDv7>` and delete it in
+  `defer`; never touch the real `com.dbashirov.gloss` items. They are tagged `.keychain`
   (need an unlocked login keychain).
 - `UserDefaults` tests use a unique absolute-path suite in the temp directory and remove it in
   `defer` (named suites leave plists in `~/Library/Preferences`).
@@ -146,7 +146,7 @@ Always use `make`, never raw `swift test`:
 
 ## Debugging
 
-- Logs: `log stream --predicate 'subsystem == "com.dbashirov.engl"'`.
+- Logs: `log stream --predicate 'subsystem == "com.dbashirov.gloss"'`.
 - Yandex fixtures were written from the docs, not checked against a real response.
 - Manual UI checklist: Post-Completion in the plan (`docs/plans/`, later
   `docs/plans/completed/`).
@@ -163,6 +163,6 @@ Always use `make`, never raw `swift test`:
 - Views: one non-private view per file; private subviews may stay next to their only user.
 - Literal URLs are `static let` constants built with `URL(string: "...")!`.
 - Never name a variable `t` (use meaningful names).
-- UUIDs are v7 (`UUID.v7()` helper in `Tests/EnglCoreTests/Helpers/UUIDv7.swift`).
+- UUIDs are v7 (`UUID.v7()` helper in `Tests/GlossCoreTests/Helpers/UUIDv7.swift`).
 - Idiomatic Swift 6 strict concurrency: `Sendable` types, `@MainActor` for UI/pasteboard,
   errors thrown, not logged and swallowed.
