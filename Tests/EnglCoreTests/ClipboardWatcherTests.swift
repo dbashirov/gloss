@@ -89,6 +89,19 @@ struct ClipboardWatcherTests {
         #expect(harness.received == ["look up"])
     }
 
+    // a tick may fall between the clearing and the writing of one copy
+    @Test func clearedPasteboardIsNotACopy() {
+        let harness = Harness()
+        harness.watcher.start()
+
+        harness.copy(nil, types: [])
+        harness.copy("run")
+        #expect(harness.received.isEmpty)
+
+        harness.copy("run")
+        #expect(harness.received == ["run"])
+    }
+
     @Test func deliversLatestTextAfterDoubleCopy() {
         let harness = Harness()
         harness.watcher.start()

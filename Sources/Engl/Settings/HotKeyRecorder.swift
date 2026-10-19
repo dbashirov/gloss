@@ -36,22 +36,24 @@ struct HotKeyRecorder: View {
     }
 }
 
-/// HotKeyRecording takes the next key press in the app as a new hot key.
+/// HotKeyRecording takes the next key press in its window as a new hot key.
 @MainActor
 @Observable
 private final class HotKeyRecording {
     private(set) var isActive = false
     private(set) var hint: String?
 
+    @ObservationIgnored private weak var window: NSWindow?
     @ObservationIgnored private var monitor: Any?
     @ObservationIgnored private var resignObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var onRecord: (HotKey) -> Void = { _ in }
     @ObservationIgnored private var onChange: (Bool) -> Void = { _ in }
 
     func start(onRecord: @escaping (HotKey) -> Void, onChange: @escaping (Bool) -> Void) {
-        guard !isActive else {
+        guard !isActive, let window = NSApp.keyWindow else {
             return
         }
+        self.window = window
         self.onRecord = onRecord
         self.onChange = onChange
         isActive = true
@@ -59,15 +61,15 @@ private final class HotKeyRecording {
         onChange(true)
         // the key press must not reach the form or the menu (⌘W would close the window)
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            MainActor.assumeIsolated {
-                self?.handle(event)
+            let isTaken = MainActor.assumeIsolated {
+                self?.take(event) ?? false
             }
-            return nil
+            return isTaken ? nil : event
         }
-        // switching to another app ends recording: the global hot key is suspended meanwhile
+        // another window or app takes the keys: the global hot key is suspended meanwhile
         resignObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didResignActiveNotification,
-            object: nil,
+            forName: NSWindow.didResignKeyNotification,
+            object: window,
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -88,24 +90,30 @@ private final class HotKeyRecording {
         }
         monitor = nil
         resignObserver = nil
+        window = nil
         isActive = false
         hint = nil
         onChange(false)
     }
 
-    private func handle(_ event: NSEvent) {
+    /// Returns `false` for a key press in another window: it goes on as usual.
+    private func take(_ event: NSEvent) -> Bool {
+        guard event.window === window else {
+            return false
+        }
         let modifiers = HotKey.Modifiers(event.modifierFlags)
         if Int(event.keyCode) == kVK_Escape, modifiers.isEmpty {
             stop()
-            return
+            return true
         }
         let hotKey = HotKey(keyCode: Int(event.keyCode), modifiers: modifiers)
         guard hotKey.isAllowed else {
             hint = "Нужны два модификатора, например ⌘⇧ или ⌃⌥"
-            return
+            return true
         }
         let onRecord = onRecord
         stop()
         onRecord(hotKey)
+        return true
     }
 }

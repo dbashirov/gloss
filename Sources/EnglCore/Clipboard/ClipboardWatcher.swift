@@ -90,6 +90,10 @@ public final class ClipboardWatcher {
             return
         }
         let types = pasteboard.types
+        // a cleared pasteboard is the middle of a copy that the next tick sees written
+        guard !types.isEmpty else {
+            return
+        }
         let isConcealed = types.contains(PasteboardType.concealed)
             || types.contains(PasteboardType.transient)
         guard detector.register(at: now(), isConcealed: isConcealed) else {
