@@ -14,24 +14,12 @@ public struct DoubleCopyDetector: Sendable {
         self.interval = Self.clamp(interval)
     }
 
-    /// Registers `delta` pasteboard changes seen at `instant` and returns `true`
-    /// when they complete a double copy. Concealed or transient contents reset
-    /// the detector.
-    public mutating func register(
-        delta: Int,
-        at instant: ContinuousClock.Instant,
-        isConcealed: Bool
-    ) -> Bool {
-        guard delta > 0 else {
-            return false
-        }
+    /// Registers a copy seen at `instant` and returns `true` when it completes a double
+    /// copy. Concealed or transient contents reset the detector.
+    public mutating func register(at instant: ContinuousClock.Instant, isConcealed: Bool) -> Bool {
         if isConcealed {
             reset()
             return false
-        }
-        if delta >= 2 {
-            reset()
-            return true
         }
         if let lastChange, instant - lastChange <= interval {
             reset()

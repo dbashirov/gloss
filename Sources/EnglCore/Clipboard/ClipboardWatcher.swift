@@ -77,23 +77,22 @@ public final class ClipboardWatcher {
         guard isRunning else {
             return
         }
-        let previous = lastChangeCount
+        var baseline = lastChangeCount
         let changeCount = pasteboard.changeCount
         lastChangeCount = changeCount
-        var delta = changeCount - previous
         if let ignored = ignoredChangeCount, ignored <= changeCount {
-            if ignored > previous {
-                delta -= 1
-            }
+            // the own write and whatever came before it in this tick are not a copy
+            baseline = max(baseline, ignored)
             ignoredChangeCount = nil
         }
-        guard delta > 0 else {
+        // one Cmd+C may change the pasteboard twice (clear, then write) within a tick
+        guard changeCount > baseline else {
             return
         }
         let types = pasteboard.types
         let isConcealed = types.contains(PasteboardType.concealed)
             || types.contains(PasteboardType.transient)
-        guard detector.register(delta: delta, at: now(), isConcealed: isConcealed) else {
+        guard detector.register(at: now(), isConcealed: isConcealed) else {
             return
         }
         guard types.contains(PasteboardType.string) else {

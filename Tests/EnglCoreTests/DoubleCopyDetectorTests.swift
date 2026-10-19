@@ -4,20 +4,18 @@ import Testing
 private let start = ContinuousClock.now
 
 private struct Change {
-    let delta: Int
     let milliseconds: Int
     let isConcealed: Bool
 }
 
-private func copy(at milliseconds: Int, delta: Int = 1, concealed: Bool = false) -> Change {
-    Change(delta: delta, milliseconds: milliseconds, isConcealed: concealed)
+private func copy(at milliseconds: Int, concealed: Bool = false) -> Change {
+    Change(milliseconds: milliseconds, isConcealed: concealed)
 }
 
 /// Feeds the changes to the detector and returns whether each one triggered.
 private func triggers(_ changes: [Change], detector: inout DoubleCopyDetector) -> [Bool] {
     changes.map { change in
         detector.register(
-            delta: change.delta,
             at: start + .milliseconds(change.milliseconds),
             isConcealed: change.isConcealed
         )
@@ -48,25 +46,10 @@ struct DoubleCopyDetectorTests {
         #expect(triggers(changes) == [false, false, true])
     }
 
-    @Test(arguments: [2, 3])
-    func triggersOnSeveralChangesInOneTick(delta: Int) {
-        #expect(triggers([copy(at: 0, delta: delta)]) == [true])
-    }
-
-    @Test func zeroDeltaIsIgnored() {
-        let changes = [copy(at: 0), copy(at: 100, delta: 0), copy(at: 200)]
-
-        #expect(triggers(changes) == [false, false, true])
-    }
-
     @Test func thirdChangeDoesNotTriggerAgain() {
         let changes = [copy(at: 0), copy(at: 100), copy(at: 200)]
 
         #expect(triggers(changes) == [false, true, false])
-    }
-
-    @Test func changeAfterOneTickDoubleDoesNotTriggerAgain() {
-        #expect(triggers([copy(at: 0, delta: 2), copy(at: 100)]) == [true, false])
     }
 
     @Test func concealedChangeResetsPendingCopy() {
@@ -75,8 +58,8 @@ struct DoubleCopyDetectorTests {
         #expect(triggers(changes) == [false, false, false, true])
     }
 
-    @Test func concealedDoubleChangeDoesNotTrigger() {
-        let changes = [copy(at: 0, delta: 2, concealed: true), copy(at: 100, concealed: true)]
+    @Test func concealedCopiesDoNotTrigger() {
+        let changes = [copy(at: 0, concealed: true), copy(at: 100, concealed: true)]
 
         #expect(triggers(changes) == [false, false])
     }

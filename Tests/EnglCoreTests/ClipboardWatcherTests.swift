@@ -32,8 +32,13 @@ private final class Harness {
     }
 
     /// Copies `text` and lets the watcher see it after `milliseconds`.
-    func copy(_ text: String?, types: [String]? = nil, after milliseconds: Int = 100) {
-        pasteboard.copy(text, types: types)
+    func copy(
+        _ text: String?,
+        types: [String]? = nil,
+        changes: Int = 1,
+        after milliseconds: Int = 100
+    ) {
+        pasteboard.copy(text, types: types, changes: changes)
         clock.advance(milliseconds: milliseconds)
         watcher.tick()
     }
@@ -72,13 +77,15 @@ struct ClipboardWatcherTests {
         #expect(harness.received == ["run"])
     }
 
-    @Test func twoChangesWithinOneTickDeliverText() {
+    // apps like Telegram clear the pasteboard and then write it: two changes per Cmd+C
+    @Test func copyWithSeveralChangesIsOneCopy() {
         let harness = Harness()
         harness.watcher.start()
 
-        harness.pasteboard.copy("look up", changes: 2)
-        harness.watcher.tick()
+        harness.copy("look up", changes: 2)
+        #expect(harness.received.isEmpty)
 
+        harness.copy("look up", changes: 2)
         #expect(harness.received == ["look up"])
     }
 
@@ -210,6 +217,18 @@ struct ClipboardWatcherTests {
         #expect(harness.received.isEmpty)
     }
 
+    @Test func ownWriteWithSeveralChangesIsIgnored() {
+        let harness = Harness()
+        harness.watcher.start()
+
+        harness.copy("run")
+        harness.pasteboard.copy("бежать", changes: 2)
+        harness.watcher.ignore(changeCount: harness.pasteboard.changeCount)
+        harness.watcher.tick()
+
+        #expect(harness.received.isEmpty)
+    }
+
     @Test func ownWriteDoesNotHideUserCopyInSameTick() {
         let harness = Harness()
         harness.watcher.start()
@@ -288,9 +307,10 @@ struct ClipboardWatcherTests {
         let harness = Harness()
         harness.watcher.start()
 
-        harness.pasteboard.copy("run", changes: 2)
+        harness.pasteboard.copy("run")
         harness.watcher.start()
         harness.watcher.tick()
+        harness.copy("run")
 
         #expect(harness.received == ["run"])
     }
@@ -338,7 +358,9 @@ struct ClipboardWatcherLoopTests {
         watcher.start()
         defer { watcher.stop() }
 
-        pasteboard.copy("run", changes: 2)
+        pasteboard.copy("run")
+        try? await Task.sleep(for: .milliseconds(50))
+        pasteboard.copy("run")
 
         var received: String?
         for await text in copies {
