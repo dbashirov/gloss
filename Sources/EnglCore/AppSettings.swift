@@ -20,6 +20,8 @@ public final class AppSettings {
         static let fontSize = "fontSize"
         static let panelFont = "panelFont"
         static let screenTextHotKeyEnabled = "screenTextHotKeyEnabled"
+        static let screenTextHotKeyCode = "screenTextHotKeyCode"
+        static let screenTextHotKeyModifiers = "screenTextHotKeyModifiers"
     }
 
     public var doubleCopyEnabled: Bool {
@@ -55,9 +57,14 @@ public final class AppSettings {
         didSet { defaults.set(panelFont.storageValue, forKey: Key.panelFont) }
     }
 
-    /// Whether ⌘⇧2 selects a screen area to translate its text.
+    /// Whether `screenTextHotKey` selects a screen area to translate its text.
     public var screenTextHotKeyEnabled: Bool {
         didSet { defaults.set(screenTextHotKeyEnabled, forKey: Key.screenTextHotKeyEnabled) }
+    }
+
+    /// The combination that selects a screen area to translate its text.
+    public var screenTextHotKey: HotKey {
+        didSet { saveScreenTextHotKey() }
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -75,6 +82,7 @@ public final class AppSettings {
         panelFont = storedFont.flatMap(PanelFont.init(storageValue:)) ?? .system
         screenTextHotKeyEnabled = defaults.object(forKey: Key.screenTextHotKeyEnabled) as? Bool
             ?? true
+        screenTextHotKey = Self.loadScreenTextHotKey(from: defaults)
         if defaults.object(forKey: Key.legacyDoubleCopyInterval) != nil {
             saveDoubleCopyInterval()
         }
@@ -89,11 +97,12 @@ public final class AppSettings {
         }
     }
 
-    /// Calls `onChange` after every change of `screenTextHotKeyEnabled`, like
-    /// `observeDoubleCopy(_:)`.
+    /// Calls `onChange` after every change of `screenTextHotKeyEnabled` or
+    /// `screenTextHotKey`, like `observeDoubleCopy(_:)`.
     public func observeScreenTextHotKey(_ onChange: @escaping @MainActor @Sendable () -> Void) {
         observe(onChange) { settings in
             _ = settings.screenTextHotKeyEnabled
+            _ = settings.screenTextHotKey
         }
     }
 
@@ -119,6 +128,11 @@ public final class AppSettings {
         let milliseconds = (doubleCopyInterval / .milliseconds(1)).rounded()
         defaults.set(Int(milliseconds), forKey: Key.doubleCopyIntervalMilliseconds)
         defaults.removeObject(forKey: Key.legacyDoubleCopyInterval)
+    }
+
+    private func saveScreenTextHotKey() {
+        defaults.set(screenTextHotKey.keyCode, forKey: Key.screenTextHotKeyCode)
+        defaults.set(screenTextHotKey.modifiers.rawValue, forKey: Key.screenTextHotKeyModifiers)
     }
 
     private func savePinnedTopLeft() {
@@ -149,6 +163,16 @@ public final class AppSettings {
             return .milliseconds(Int((seconds * 1000).rounded()))
         }
         return DoubleCopyDetector.defaultInterval
+    }
+
+    private static func loadScreenTextHotKey(from defaults: UserDefaults) -> HotKey {
+        guard let keyCode = defaults.object(forKey: Key.screenTextHotKeyCode) as? Int,
+              let modifiers = defaults.object(forKey: Key.screenTextHotKeyModifiers) as? Int
+        else {
+            return .screenTextDefault
+        }
+        let hotKey = HotKey(keyCode: keyCode, modifiers: HotKey.Modifiers(rawValue: modifiers))
+        return hotKey.isAllowed ? hotKey : .screenTextDefault
     }
 
     private static func loadPinnedTopLeft(from defaults: UserDefaults) -> CGPoint? {

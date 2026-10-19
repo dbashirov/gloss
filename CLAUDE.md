@@ -41,15 +41,16 @@ Always use `make`, never raw `swift test`:
 
 - `Sources/EnglCore/` — models (incl. `Language` codes), `TextNormalizer`, `QueryClassifier`,
   `Router`, `TranslationController`, `AppSettings`, `AppIdentity` (bundle ID, log subsystem,
-  Keychain service), `PopupGeometry`, secrets/Keychain, `YandexKey{Store,Check,Settings}`,
+  Keychain service), `PopupGeometry`, `HotKey`, secrets/Keychain, `YandexKey{Store,Check,Settings}`,
   `SettingsNote`, `LanguagePack{State,Download}`, presentation helpers
   (`ProviderError+Message`, `ResultPresentation`); `Providers/` (Yandex, Apple), `Clipboard/`
   (`ClipboardWatcher`, `DoubleCopyDetector`, `PasteboardReading`, `PasteAccess`),
   `ScreenText/` (`ScreenTextReader`, `ScreenCapturing`/`TextRecognizing`,
   `VisionTextRecognizer`, `RecognizedText`, `ScreenTextError`).
 - `Sources/Engl/` — `AppDelegate`, `AppEnvironment`, `MainMenu`, `StatusItemController`,
-  `SystemPasteboard`, `SystemScreenCapture`, `GlobalHotKey`; `Panel/` (`TranslatorPanel`, `PanelController`), `Views/` (panel SwiftUI),
-  `Settings/` (settings window).
+  `SystemPasteboard`, `SystemScreenCapture`, `GlobalHotKey`, `KeyNames`; `Panel/`
+  (`TranslatorPanel`, `PanelController`), `Views/` (panel SwiftUI), `Settings/` (settings
+  window, `HotKeyRecorder`).
 - `Tests/EnglCoreTests/` — one suite per type, each in `<Type>Tests.swift`; `Fakes/`,
   `Helpers/` (`fixture(_:)`, `Gate`, `StubURLProtocol`, tags, `UUID.v7()`, shared test data
   `runQuery`/`sentenceQuery`/`runCard`/`runText`/`UnexpectedError` in `TestData.swift`),
@@ -130,7 +131,10 @@ Always use `make`, never raw `swift test`:
 - Screen text: `SystemScreenCapture` runs `/usr/sbin/screencapture -i -s -x <tmp.png>`
   (the system crosshair; Esc leaves no file = cancelled) and needs Screen Recording access
   (`CGPreflightScreenCaptureAccess`); `GlobalHotKey` is a Carbon `RegisterEventHotKey`
-  (⌘⇧2), which needs no Accessibility/Input Monitoring access. `VisionTextRecognizerTests`
+  (`AppSettings.screenTextHotKey`, ⌘⇧2 by default), which needs no Accessibility/Input
+  Monitoring access. `HotKeyRecorder` suspends it while recording (Carbon would take the
+  press first) and takes the press with a local `NSEvent` monitor; `HotKey.isAllowed` wants
+  two modifiers (a lone ⌘ or ⌥ would hijack ⌘C or typing) except for F1-F20. `VisionTextRecognizerTests`
   run the real Vision on text drawn with CoreText.
 - Double-copy settings reach the watcher through one channel: `AppDelegate` subscribes with
   `AppSettings.observeDoubleCopy`; the tray menu and the settings window only change

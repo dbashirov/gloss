@@ -9,6 +9,7 @@ struct SettingsView: View {
 
     @Bindable var model: SettingsModel
     @Bindable var settings: AppSettings
+    let screenTextHotKey: GlobalHotKey
 
     var body: some View {
         Form {
@@ -130,7 +131,27 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var screenText: some View {
-        Toggle("Выделить область и перевести по ⌘⇧2", isOn: $settings.screenTextHotKeyEnabled)
+        Toggle(
+            "Выделить область и перевести по горячей клавише",
+            isOn: $settings.screenTextHotKeyEnabled
+        )
+        LabeledContent("Горячая клавиша") {
+            HStack(alignment: .firstTextBaseline) {
+                if settings.screenTextHotKey != .screenTextDefault {
+                    Button("Сбросить") {
+                        settings.screenTextHotKey = .screenTextDefault
+                    }
+                }
+                HotKeyRecorder(
+                    hotKey: settings.screenTextHotKey,
+                    onRecord: { settings.screenTextHotKey = $0 },
+                    onRecordingChange: { screenTextHotKey.isSuspended = $0 }
+                )
+            }
+        }
+        if screenTextHotKey.isTaken {
+            Caption("Сочетание занято другим приложением: выберите другое")
+        }
         Caption("Без горячей клавиши - пункт «Перевести текст с экрана» в меню иконки")
         LabeledContent(
             "Доступ к записи экрана",

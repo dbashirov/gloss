@@ -1,42 +1,56 @@
 import Carbon.HIToolbox
+import EnglCore
+import Observation
 
 /// GlobalHotKey calls its action when its key combination is pressed in any app.
 /// Carbon hot keys need neither Accessibility nor Input Monitoring access.
 @MainActor
+@Observable
 final class GlobalHotKey {
     // 'Engl'
     private static let signature: OSType = 0x456E_676C
 
-    private let keyCode: UInt32
-    private let modifiers: UInt32
-    private let action: () -> Void
-    private var hotKey: EventHotKeyRef?
-    private var handler: EventHandlerRef?
+    /// The combination to register; `nil` turns the hot key off.
+    var combination: HotKey? {
+        didSet { update() }
+    }
 
-    /// `keyCode` is a `kVK_` code, `modifiers` a mask of `cmdKey`, `shiftKey` and the like.
-    init(keyCode: Int, modifiers: Int, action: @escaping () -> Void) {
-        self.keyCode = UInt32(keyCode)
-        self.modifiers = UInt32(modifiers)
+    /// Releases the combination while a new one is recorded: pressing it must reach the recorder.
+    var isSuspended = false {
+        didSet { update() }
+    }
+
+    /// Whether another app holds the combination.
+    private(set) var isTaken = false
+
+    @ObservationIgnored private let action: () -> Void
+    @ObservationIgnored private var hotKey: EventHotKeyRef?
+    @ObservationIgnored private var handler: EventHandlerRef?
+
+    init(action: @escaping () -> Void) {
         self.action = action
     }
 
-    var isRegistered: Bool {
-        hotKey != nil
-    }
-
-    /// Returns `false` when another app holds the combination.
-    @discardableResult
-    func register() -> Bool {
-        guard hotKey == nil else {
-            return true
+    private func update() {
+        unregister()
+        guard let combination, !isSuspended else {
+            isTaken = false
+            return
         }
         installHandler()
         let id = EventHotKeyID(signature: Self.signature, id: 1)
-        let target = GetApplicationEventTarget()
-        return RegisterEventHotKey(keyCode, modifiers, id, target, 0, &hotKey) == noErr
+        let status = RegisterEventHotKey(
+            UInt32(combination.keyCode),
+            combination.modifiers.carbonFlags,
+            id,
+            GetApplicationEventTarget(),
+            0,
+            &hotKey
+        )
+        isTaken = status != noErr
     }
 
-    func unregister() {
+    private func unregister() {
         guard let hotKey else {
             return
         }
@@ -70,5 +84,16 @@ final class GlobalHotKey {
             Unmanaged.passUnretained(self).toOpaque(),
             &handler
         )
+    }
+}
+
+private extension HotKey.Modifiers {
+    var carbonFlags: UInt32 {
+        let flags: [(HotKey.Modifiers, Int)] = [
+            (.control, controlKey), (.option, optionKey), (.shift, shiftKey), (.command, cmdKey),
+        ]
+        return flags.reduce(0) { result, flag in
+            contains(flag.0) ? result | UInt32(flag.1) : result
+        }
     }
 }

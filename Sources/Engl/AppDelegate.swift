@@ -1,5 +1,4 @@
 import AppKit
-import Carbon.HIToolbox
 import EnglCore
 import os
 
@@ -54,10 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.applyDoubleCopySettings()
         }
         applyDoubleCopySettings()
-        screenTextHotKey = GlobalHotKey(
-            keyCode: kVK_ANSI_2,
-            modifiers: cmdKey | shiftKey
-        ) { [weak self] in
+        screenTextHotKey = GlobalHotKey { [weak self] in
             self?.readScreenText()
         }
         environment.settings.observeScreenTextHotKey { [weak self] in
@@ -121,12 +117,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let environment, let screenTextHotKey else {
             return
         }
-        guard environment.settings.screenTextHotKeyEnabled else {
-            screenTextHotKey.unregister()
-            return
-        }
-        if !screenTextHotKey.register() {
-            logger.warning("⌘⇧2 is taken by another app: screen text works from the menu only")
+        let settings = environment.settings
+        screenTextHotKey.combination = settings.screenTextHotKeyEnabled
+            ? settings.screenTextHotKey
+            : nil
+        if screenTextHotKey.isTaken {
+            let name = KeyNames.displayName(of: settings.screenTextHotKey)
+            logger.warning("\(name, privacy: .public) is taken by another app: use the menu")
         }
     }
 
@@ -135,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let settingsWindow {
             return settingsWindow
         }
-        guard let environment else {
+        guard let environment, let screenTextHotKey else {
             return nil
         }
         let model = SettingsModel(
@@ -144,7 +141,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             screenCapture: environment.screenCapture,
             textTranslator: SystemTextTranslator()
         )
-        let controller = SettingsWindowController(model: model, settings: environment.settings)
+        let controller = SettingsWindowController(
+            model: model,
+            settings: environment.settings,
+            screenTextHotKey: screenTextHotKey
+        )
         settingsWindow = controller
         return controller
     }

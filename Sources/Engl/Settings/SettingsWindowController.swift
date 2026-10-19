@@ -11,9 +11,13 @@ final class SettingsWindowController: NSObject {
     private var activationObserver: (any NSObjectProtocol)?
     private var screenObservers: [any NSObjectProtocol] = []
 
-    init(model: SettingsModel, settings: AppSettings) {
+    init(model: SettingsModel, settings: AppSettings, screenTextHotKey: GlobalHotKey) {
         self.model = model
-        let content = NSHostingController(rootView: SettingsView(model: model, settings: settings))
+        let content = NSHostingController(rootView: SettingsView(
+            model: model,
+            settings: settings,
+            screenTextHotKey: screenTextHotKey
+        ))
         window = NSWindow(contentViewController: content)
         window.title = "Настройки Engl"
         window.styleMask = [.titled, .closable]

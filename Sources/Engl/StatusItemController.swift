@@ -57,9 +57,13 @@ final class StatusItemController: NSObject {
         let screenText = NSMenuItem(
             title: "Перевести текст с экрана",
             action: #selector(readScreenText),
-            keyEquivalent: settings.screenTextHotKeyEnabled ? "2" : ""
+            keyEquivalent: ""
         )
-        screenText.keyEquivalentModifierMask = [.command, .shift]
+        let hotKey = settings.screenTextHotKey
+        if settings.screenTextHotKeyEnabled, let key = KeyNames.keyEquivalent(of: hotKey) {
+            screenText.keyEquivalent = key
+            screenText.keyEquivalentModifierMask = KeyNames.modifierMask(of: hotKey)
+        }
         menu.addItem(screenText)
         menu.addItem(.separator())
         let doubleCopy = NSMenuItem(

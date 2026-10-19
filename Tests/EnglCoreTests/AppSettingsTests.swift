@@ -37,6 +37,7 @@ struct AppSettingsTests {
         #expect(settings.fontSize == PanelTypography.defaultSize)
         #expect(settings.panelFont == .system)
         #expect(settings.screenTextHotKeyEnabled)
+        #expect(settings.screenTextHotKey == .screenTextDefault)
     }
 
     @Test func reloadsSavedValues() throws {
@@ -52,6 +53,7 @@ struct AppSettingsTests {
         settings.fontSize = 17
         settings.panelFont = .family("Georgia")
         settings.screenTextHotKeyEnabled = false
+        settings.screenTextHotKey = HotKey(keyCode: 0x11, modifiers: [.control, .option])
 
         let reloaded = AppSettings(defaults: try makeDefaults(suiteName))
         #expect(!reloaded.doubleCopyEnabled)
@@ -62,6 +64,23 @@ struct AppSettingsTests {
         #expect(reloaded.fontSize == 17)
         #expect(reloaded.panelFont == .family("Georgia"))
         #expect(!reloaded.screenTextHotKeyEnabled)
+        #expect(reloaded.screenTextHotKey == HotKey(keyCode: 0x11, modifiers: [.control, .option]))
+    }
+
+    @Test(arguments: [
+        (0x08, HotKey.Modifiers.command.rawValue),
+        (0x13, nil),
+    ])
+    func unusableStoredHotKeyFallsBackToDefault(keyCode: Int, modifiers: Int?) throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let defaults = try makeDefaults(suiteName)
+        defaults.set(keyCode, forKey: AppSettings.Key.screenTextHotKeyCode)
+        if let modifiers {
+            defaults.set(modifiers, forKey: AppSettings.Key.screenTextHotKeyModifiers)
+        }
+
+        #expect(AppSettings(defaults: defaults).screenTextHotKey == .screenTextDefault)
     }
 
     @Test func unknownStoredFontFallsBackToSystem() throws {
@@ -217,8 +236,11 @@ struct AppSettingsTests {
         settings.doubleCopyEnabled = false
         settings.screenTextHotKeyEnabled = true
         let second = try #require(await iterator.next())
+        settings.screenTextHotKey = HotKey(keyCode: 0x11, modifiers: [.control, .option])
+        let third = try #require(await iterator.next())
 
         #expect(!first)
         #expect(second)
+        #expect(third)
     }
 }
