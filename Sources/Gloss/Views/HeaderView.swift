@@ -1,23 +1,19 @@
 import SwiftUI
 
-/// HeaderView is the panel's top bar: a drag handle, the pin toggle and the close button.
+/// HeaderView is the panel's top bar with the pin toggle and the close button; the whole
+/// bar drags the panel. It takes the panel's top and side insets, so the strip above the
+/// field drags up to the edges.
 struct HeaderView: View {
+    static let inset: CGFloat = 12
+    static let bottomInset: CGFloat = 10
+
     let isPinned: Bool
     let onTogglePin: () -> Void
     let onClose: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
-            // isMovableByWindowBackground does not work over NSHostingView
-            HStack {
-                Image(systemName: "line.3.horizontal")
-                    .foregroundStyle(.tertiary)
-                Spacer()
-            }
-            .contentShape(Rectangle())
-            .gesture(WindowDragGesture())
-            .allowsWindowActivationEvents(true)
-            .help("Перетащить")
+            Spacer()
 
             Button(action: onTogglePin) {
                 Image(systemName: isPinned ? "pin.fill" : "pin")
@@ -31,5 +27,12 @@ struct HeaderView: View {
         }
         .buttonStyle(.borderless)
         .foregroundStyle(.secondary)
+        .padding([.horizontal, .top], Self.inset)
+        .padding(.bottom, Self.bottomInset)
+        // isMovableByWindowBackground does not work over NSHostingView; the buttons
+        // take their clicks before the drag
+        .contentShape(Rectangle())
+        .gesture(WindowDragGesture())
+        .allowsWindowActivationEvents(true)
     }
 }

@@ -25,4 +25,22 @@ struct QueryFieldSizingTests {
         #expect(height(dragging: 20, resultRoom: 0) == 32)
         #expect(height(dragging: 20, resultRoom: -100) == 30)
     }
+
+    @Test func splitsRoomByShare() {
+        let middle = QueryFieldSizing.defaultShare
+        #expect(QueryFieldSizing.height(share: middle, room: 300, minHeight: 30) == 150)
+        #expect(QueryFieldSizing.height(share: 0.25, room: 400, minHeight: 30) == 100)
+    }
+
+    @Test func shareKeepsOneLineAndAStripOfTheResult() {
+        #expect(QueryFieldSizing.height(share: 0.05, room: 300, minHeight: 30) == 30)
+        #expect(QueryFieldSizing.height(share: 0.99, room: 300, minHeight: 30) == 252)
+        #expect(QueryFieldSizing.height(share: 0.5, room: 50, minHeight: 30) == 30)
+    }
+
+    @Test func convertsHeightToShare() {
+        #expect(QueryFieldSizing.share(of: 75, room: 300) == 0.25)
+        #expect(QueryFieldSizing.share(of: 400, room: 300) == 1)
+        #expect(QueryFieldSizing.share(of: 75, room: 0) == nil)
+    }
 }

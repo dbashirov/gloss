@@ -18,6 +18,7 @@ public final class AppSettings {
         static let panelWidth = "panelWidth"
         static let panelHeight = "panelHeight"
         static let queryFieldHeight = "queryFieldHeight"
+        static let queryFieldShare = "queryFieldShare"
         static let fontSize = "fontSize"
         static let panelFont = "panelFont"
         static let screenTextHotKeyEnabled = "screenTextHotKeyEnabled"
@@ -51,9 +52,16 @@ public final class AppSettings {
         didSet { savePanelSize() }
     }
 
-    /// Query field height set with the divider; `nil` fits the field to its text.
+    /// Query field height set with the divider in a panel that follows its content;
+    /// `nil` fits the field to its text.
     public var queryFieldHeight: Double? {
-        didSet { saveQueryFieldHeight() }
+        didSet { save(queryFieldHeight, forKey: Key.queryFieldHeight) }
+    }
+
+    /// Share of the field and result height the field takes in a panel sized by the
+    /// user, set with the divider; `nil` is `QueryFieldSizing.defaultShare`.
+    public var queryFieldShare: Double? {
+        didSet { save(queryFieldShare, forKey: Key.queryFieldShare) }
     }
 
     /// Base text size of the panel in points, within `PanelTypography.sizeRange`.
@@ -110,6 +118,8 @@ public final class AppSettings {
         panelSize = Self.loadPanelSize(from: defaults)
         queryFieldHeight = (defaults.object(forKey: Key.queryFieldHeight) as? Double)
             .flatMap { $0 > 0 ? $0 : nil }
+        queryFieldShare = (defaults.object(forKey: Key.queryFieldShare) as? Double)
+            .flatMap { $0 > 0 && $0 < 1 ? $0 : nil }
         let fontSize = defaults.object(forKey: Key.fontSize) as? Double
         self.fontSize = PanelTypography.clamp(fontSize ?? PanelTypography.defaultSize)
         let storedFont = defaults.string(forKey: Key.panelFont)
@@ -204,11 +214,11 @@ public final class AppSettings {
         defaults.set(Double(panelSize.height), forKey: Key.panelHeight)
     }
 
-    private func saveQueryFieldHeight() {
-        if let queryFieldHeight {
-            defaults.set(queryFieldHeight, forKey: Key.queryFieldHeight)
+    private func save(_ value: Double?, forKey key: String) {
+        if let value {
+            defaults.set(value, forKey: key)
         } else {
-            defaults.removeObject(forKey: Key.queryFieldHeight)
+            defaults.removeObject(forKey: key)
         }
     }
 

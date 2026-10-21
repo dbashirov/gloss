@@ -35,6 +35,7 @@ struct AppSettingsTests {
         #expect(settings.pinnedTopLeft == nil)
         #expect(settings.panelSize == nil)
         #expect(settings.queryFieldHeight == nil)
+        #expect(settings.queryFieldShare == nil)
         #expect(settings.fontSize == PanelTypography.defaultSize)
         #expect(settings.panelFont == .system)
         #expect(settings.screenTextHotKeyEnabled)
@@ -54,6 +55,7 @@ struct AppSettingsTests {
         settings.pinnedTopLeft = CGPoint(x: 120.5, y: -40)
         settings.panelSize = CGSize(width: 520.5, height: 640)
         settings.queryFieldHeight = 132.5
+        settings.queryFieldShare = 0.35
         settings.fontSize = 17
         settings.panelFont = .family("Georgia")
         settings.screenTextHotKeyEnabled = false
@@ -68,6 +70,7 @@ struct AppSettingsTests {
         #expect(reloaded.pinnedTopLeft == CGPoint(x: 120.5, y: -40))
         #expect(reloaded.panelSize == CGSize(width: 520.5, height: 640))
         #expect(reloaded.queryFieldHeight == 132.5)
+        #expect(reloaded.queryFieldShare == 0.35)
         #expect(reloaded.fontSize == 17)
         #expect(reloaded.panelFont == .family("Georgia"))
         #expect(!reloaded.screenTextHotKeyEnabled)
@@ -170,6 +173,29 @@ struct AppSettingsTests {
         defaults.set(0.0, forKey: AppSettings.Key.queryFieldHeight)
 
         #expect(AppSettings(defaults: defaults).queryFieldHeight == nil)
+    }
+
+    @Test func clearsQueryFieldShare() throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let defaults = try makeDefaults(suiteName)
+        let settings = AppSettings(defaults: defaults)
+        settings.queryFieldShare = 0.4
+
+        settings.queryFieldShare = nil
+
+        #expect(AppSettings(defaults: try makeDefaults(suiteName)).queryFieldShare == nil)
+        #expect(defaults.object(forKey: AppSettings.Key.queryFieldShare) == nil)
+    }
+
+    @Test(arguments: [0.0, 1.0, -0.5, 2.0])
+    func ignoresQueryFieldShareOutsideOfOne(share: Double) throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let defaults = try makeDefaults(suiteName)
+        defaults.set(share, forKey: AppSettings.Key.queryFieldShare)
+
+        #expect(AppSettings(defaults: defaults).queryFieldShare == nil)
     }
 
     @Test func ignoresIncompletePanelSize() throws {

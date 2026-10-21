@@ -102,9 +102,10 @@ Always use `make`, never raw `swift test`:
 - An accessory app still needs `NSApp.mainMenu` (`MainMenu.swift`), otherwise text fields get
   no Cmd+C/V/A and windows no Cmd+W.
 - `TranslatorPanel` is `.borderless` + `.resizable` + `.nonactivatingPanel` with
-  `canBecomeKey = true`; Esc is
-  caught in `sendEvent(_:)` (the field editor would take it for completion) and Cmd+W in
-  `performClose(_:)`. Dragging uses `WindowDragGesture` in `HeaderView`.
+  `canBecomeKey = true`; Esc is caught in `sendEvent(_:)` (the field editor would take it
+  for completion) and Cmd+W in `performClose(_:)`. Dragging uses `WindowDragGesture` in
+  `HeaderView`, which takes the panel's top and side insets so the whole strip above the
+  field drags.
 - The query field (`Views/QueryField.swift`) is an `NSTextView` in an `NSScrollView`, not a
   SwiftUI `TextField`: a vertical `TextField` has no scroller, and its field editor kept the
   width it started editing with (a user-sized panel wrapped every letter onto its own line).
@@ -112,10 +113,12 @@ Always use `make`, never raw `swift test`:
   because overlay ones show only while scrolling. It keeps its own `UndoManager` and clears it
   when the query is replaced from outside: stale undo steps hung Cmd+Z. An input method
   composition does not reach the binding, so an outside change is told by `syncedText`, not
-  by the editor's string, and discards the composition. `QueryDivider` below it sets
-  `AppSettings.queryFieldHeight` (clamped by `QueryFieldSizing`, tracked by the screen
-  cursor like the grip); the field then keeps that height with `layoutPriority(1)` and
-  gives way down to one line, the result area keeps `minResultHeight`.
+  by the editor's string, and discards the composition. `QueryDivider` below it is
+  tracked by the screen cursor like the grip and clamped by `QueryFieldSizing`. A panel
+  that follows its content keeps `AppSettings.queryFieldHeight`; a panel sized by the user
+  keeps `queryFieldShare` (default 0.5) of the measured field and result room, so the
+  divider moves with the panel's edge. The field holds its height with `layoutPriority(1)`
+  and gives way down to one line, the result area keeps `minResultHeight`.
 - A hidden `NSHostingController` window is 1×32 until shown: `SettingsWindowController` sets
   the content size from `fittingSize` before `center()`.
 - Settings are pages (`SettingsTab`) under an `NSToolbar` with selectable items

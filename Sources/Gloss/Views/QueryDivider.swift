@@ -4,6 +4,8 @@ import SwiftUI
 /// QueryDivider sits between the query field and the result: a vertical drag moves the
 /// border between them, a double click fits the field to its text again.
 struct QueryDivider: View {
+    static let height: CGFloat = 12
+
     /// Called with how far the cursor moved down since the drag began; `nil` ends it.
     let onDrag: (CGFloat?) -> Void
     let onReset: () -> Void
@@ -17,7 +19,7 @@ struct QueryDivider: View {
             .fill(Color.secondary.opacity(isActive ? 0.6 : 0.3))
             .frame(width: 36, height: 4)
             .frame(maxWidth: .infinity)
-            .frame(height: 12)
+            .frame(height: Self.height)
             .contentShape(Rectangle())
             // the panel may move while it follows its content: the screen cursor is tracked
             .gesture(
@@ -38,6 +40,6 @@ struct QueryDivider: View {
             .onHover { isHovered.wrappedValue = $0 }
             .allowsWindowActivationEvents(true)
             .pointerStyle(.frameResize(position: .bottom))
-            .help("Потяните, чтобы изменить высоту поля. Двойной клик - по тексту")
+            .help("Потяните, чтобы изменить высоту поля. Двойной клик - высота по умолчанию")
     }
 }
