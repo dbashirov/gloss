@@ -11,12 +11,16 @@ public struct VisionTextRecognizer: TextRecognizing {
 
     public init() {}
 
-    public func recognizeLines(in image: CGImage) async throws -> [String] {
+    public func recognizeLines(in image: CGImage) async throws -> [RecognizedLine] {
         var request = RecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
         request.recognitionLanguages = Self.languages
         let observations = try await request.perform(on: image)
-        return observations.compactMap { $0.topCandidates(1).first?.string }
+        return observations.compactMap { observation in
+            observation.topCandidates(1).first.map { candidate in
+                RecognizedLine(text: candidate.string, bounds: observation.boundingBox.cgRect)
+            }
+        }
     }
 }

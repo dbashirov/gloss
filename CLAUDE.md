@@ -150,7 +150,9 @@ Always use `make`, never raw `swift test`:
   before a list marker, an empty line stays one; any other break is a wrapped line and
   becomes a space. `AppleTranslationProvider` translates each line on its own (one
   `TranslationSession` per query) and joins them back, so the result keeps the breaks.
-  `RecognizedText` still joins screen lines with spaces.
+  Screen text gets the same breaks from geometry: `TextRecognizing` returns lines with
+  their Vision bounds, and `RecognizedText` starts a paragraph on a gap over
+  `paragraphGap` (0.7) of a line height or a jump up to the next column.
 - Two `GlobalHotKey`s (screen text, clipboard) share the application event target: each
   has its own `EventHotKeyID.id` and its handler returns `eventNotHandledErr` for another
   one's press. Recording one suspends both; the two combinations never match

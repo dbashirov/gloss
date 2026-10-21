@@ -16,5 +16,5 @@ public protocol ScreenCapturing {
 /// TextRecognizing finds the lines of text in an image.
 public protocol TextRecognizing: Sendable {
     /// Returns the lines in reading order.
-    func recognizeLines(in image: CGImage) async throws -> [String]
+    func recognizeLines(in image: CGImage) async throws -> [RecognizedLine]
 }

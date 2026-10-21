@@ -7,7 +7,7 @@ public enum TextNormalizer {
 
     // a colon usually opens a list
     private static let lineEnds = sentenceTerminators.union([":"])
-    private static let listMarkers: Set<Character> = ["-", "•", "*"]
+    static let listMarkers: Set<Character> = ["-", "•", "*"]
 
     /// Trims the text, collapses whitespace into single spaces and caps the length at
     /// `maxLength` characters. Returns `nil` when nothing is left.

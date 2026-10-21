@@ -28,3 +28,22 @@ let blankImage: CGImage = {
     )
     return context!.makeImage()!
 }()
+
+/// Lays paragraphs out top to bottom like body text: lines 0.05 high and 0.01 apart,
+/// paragraphs a line height apart.
+func layOut(_ paragraphs: [[String]]) -> [RecognizedLine] {
+    let lineHeight = 0.05
+    var top = 1.0
+    var lines: [RecognizedLine] = []
+    for (index, paragraph) in paragraphs.enumerated() {
+        if index > 0 {
+            top -= lineHeight
+        }
+        for text in paragraph {
+            let bounds = CGRect(x: 0.1, y: top - lineHeight, width: 0.8, height: lineHeight)
+            lines.append(RecognizedLine(text: text, bounds: bounds))
+            top -= lineHeight + 0.01
+        }
+    }
+    return lines
+}

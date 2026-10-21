@@ -45,7 +45,18 @@ struct VisionTextRecognizerTests {
     func recognizesEnglishAndRussianLines(lines: [String]) async throws {
         let recognized = try await VisionTextRecognizer().recognizeLines(in: try render(lines))
 
-        #expect(recognized == lines)
+        #expect(recognized.map(\.text) == lines)
+    }
+
+    @Test func tellsParagraphsByTheGap() async throws {
+        // an empty line leaves a paragraph gap
+        let lines = ["The first paragraph goes on", "to the next line.", "", "Second."]
+        let image = try render(lines)
+
+        let recognized = try await VisionTextRecognizer().recognizeLines(in: image)
+
+        let expected = "The first paragraph goes on to the next line.\n\nSecond."
+        #expect(RecognizedText.join(recognized) == expected)
     }
 
     @Test func findsNothingOnBlankImage() async throws {
