@@ -2,10 +2,12 @@ import AppKit
 import GlossCore
 import SwiftUI
 
-/// QueryField is the multiline query editor: 3 to 6 lines high, a longer text scrolls
-/// with a scroller. Enter submits, ⌥Enter inserts a line break.
+/// QueryField is the multiline query editor: 3 to 6 lines high or as high as the user
+/// set it, a longer text scrolls with a scroller. Enter submits, ⌥Enter inserts a line break.
 struct QueryField: View {
     @Binding var text: String
+    /// Height set with the divider; `nil` fits the field to its text.
+    let fixedHeight: CGFloat?
     /// Moves the focus into the field and selects its text on every change.
     let focusRequest: Int
     let onSubmit: () -> Void
@@ -14,8 +16,14 @@ struct QueryField: View {
     private let height = State(initialValue: CGFloat?.none)
     private let isFocused = State(initialValue: false)
 
+    /// Returns the lowest height the divider may give the field: one line.
+    static func minHeight(font: NSFont) -> CGFloat {
+        QueryTextView.height(lines: 1, font: font)
+    }
+
     var body: some View {
         let font = typography.nsFont(size: typography.body)
+        let fittedHeight = height.wrappedValue ?? QueryTextView.height(lines: 3, font: font)
         let shape = RoundedRectangle(cornerRadius: 6)
         QueryTextView(
             text: $text,
@@ -25,7 +33,12 @@ struct QueryField: View {
             onHeightChange: { height.wrappedValue = $0 },
             onFocusChange: { isFocused.wrappedValue = $0 }
         )
-        .frame(height: height.wrappedValue ?? QueryTextView.height(lines: 3, font: font))
+        // a set height gives way down to one line when the panel is too low for it
+        .frame(
+            minHeight: fixedHeight == nil ? fittedHeight : Self.minHeight(font: font),
+            idealHeight: fixedHeight ?? fittedHeight,
+            maxHeight: fixedHeight ?? fittedHeight
+        )
         .overlay(alignment: .topLeading) {
             if text.isEmpty {
                 Text("Слово или фраза")

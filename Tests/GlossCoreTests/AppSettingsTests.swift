@@ -34,6 +34,7 @@ struct AppSettingsTests {
         #expect(!settings.isPinned)
         #expect(settings.pinnedTopLeft == nil)
         #expect(settings.panelSize == nil)
+        #expect(settings.queryFieldHeight == nil)
         #expect(settings.fontSize == PanelTypography.defaultSize)
         #expect(settings.panelFont == .system)
         #expect(settings.screenTextHotKeyEnabled)
@@ -50,6 +51,7 @@ struct AppSettingsTests {
         settings.isPinned = true
         settings.pinnedTopLeft = CGPoint(x: 120.5, y: -40)
         settings.panelSize = CGSize(width: 520.5, height: 640)
+        settings.queryFieldHeight = 132.5
         settings.fontSize = 17
         settings.panelFont = .family("Georgia")
         settings.screenTextHotKeyEnabled = false
@@ -61,6 +63,7 @@ struct AppSettingsTests {
         #expect(reloaded.isPinned)
         #expect(reloaded.pinnedTopLeft == CGPoint(x: 120.5, y: -40))
         #expect(reloaded.panelSize == CGSize(width: 520.5, height: 640))
+        #expect(reloaded.queryFieldHeight == 132.5)
         #expect(reloaded.fontSize == 17)
         #expect(reloaded.panelFont == .family("Georgia"))
         #expect(!reloaded.screenTextHotKeyEnabled)
@@ -113,6 +116,28 @@ struct AppSettingsTests {
         #expect(AppSettings(defaults: try makeDefaults(suiteName)).panelSize == nil)
         #expect(defaults.object(forKey: AppSettings.Key.panelWidth) == nil)
         #expect(defaults.object(forKey: AppSettings.Key.panelHeight) == nil)
+    }
+
+    @Test func clearsQueryFieldHeight() throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let defaults = try makeDefaults(suiteName)
+        let settings = AppSettings(defaults: defaults)
+        settings.queryFieldHeight = 120
+
+        settings.queryFieldHeight = nil
+
+        #expect(AppSettings(defaults: try makeDefaults(suiteName)).queryFieldHeight == nil)
+        #expect(defaults.object(forKey: AppSettings.Key.queryFieldHeight) == nil)
+    }
+
+    @Test func ignoresNonPositiveQueryFieldHeight() throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let defaults = try makeDefaults(suiteName)
+        defaults.set(0.0, forKey: AppSettings.Key.queryFieldHeight)
+
+        #expect(AppSettings(defaults: defaults).queryFieldHeight == nil)
     }
 
     @Test func ignoresIncompletePanelSize() throws {

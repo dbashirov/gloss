@@ -12,6 +12,10 @@ struct TranslatorView: View {
     private let resultHeight = State(initialValue: CGFloat(0))
     // everything but the result area: header, field, notices, footer and paddings
     private let chromeHeight = State(initialValue: CGFloat(150))
+    private let fieldHeight = State(initialValue: CGFloat(0))
+    private let scrollViewHeight = State(initialValue: CGFloat(0))
+    /// The field height and the room of the result area when the divider drag began.
+    private let dividerStart = State(initialValue: (field: CGFloat, resultRoom: CGFloat)?.none)
 
     var body: some View {
         // a size chosen by the user is filled by the content, the result area scrolls
@@ -19,56 +23,85 @@ struct TranslatorView: View {
         let resultLimit = PanelController.autoMaxHeight - chromeHeight.wrappedValue
         let scrollHeight = max(min(resultHeight.wrappedValue, resultLimit), 0)
         let typography = PanelTypography(baseSize: settings.fontSize, font: settings.panelFont)
+        let fieldMinHeight = QueryField.minHeight(font: typography.nsFont(size: typography.body))
         VStack(alignment: .leading, spacing: 10) {
             HeaderView(
                 isPinned: settings.isPinned,
                 onTogglePin: actions.togglePin,
                 onClose: actions.close
             )
-            QueryField(text: $model.query, focusRequest: model.focusRequest) {
-                model.screenTextError = nil
-                model.inputRevision += 1
-                translator.translate(model.query)
-            }
-            // notices scroll with the result: a small panel keeps the field and footer visible
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    if model.isPasteAccessDenied {
-                        NoticeView(
-                            message: "Доступ к буферу обмена запрещён — двойной Cmd+C не работает",
-                            action: .allowPasteboardAccess,
-                            perform: actions.perform
-                        )
-                    }
-                    if let error = model.screenTextError {
-                        NoticeView(
-                            message: error.message,
-                            action: error.action,
-                            perform: actions.perform
-                        )
-                    } else {
-                        stateContent
-                    }
-                    if case .result(let routed) = translator.state,
-                       let notice = routed.fallbackNotice {
-                        NoticeView(
-                            message: notice.message,
-                            action: notice.action,
-                            perform: actions.perform
-                        )
-                        .font(typography.font(size: typography.caption))
-                    }
+            // the divider stands in for the spacing between the field and the result
+            VStack(alignment: .leading, spacing: 0) {
+                QueryField(
+                    text: $model.query,
+                    fixedHeight: settings.queryFieldHeight.map { CGFloat($0) },
+                    focusRequest: model.focusRequest
+                ) {
+                    model.screenTextError = nil
+                    model.inputRevision += 1
+                    translator.translate(model.query)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
                 .onGeometryChange(for: CGFloat.self) { proxy in
                     proxy.size.height
                 } action: { height in
-                    resultHeight.wrappedValue = height
+                    fieldHeight.wrappedValue = height
+                }
+                // the field keeps its set height, the result area gives way
+                .layoutPriority(1)
+                QueryDivider { offset in
+                    let room = isAutoSized ? resultLimit : scrollViewHeight.wrappedValue
+                    dragDivider(by: offset, resultRoom: room, minHeight: fieldMinHeight)
+                } onReset: {
+                    settings.queryFieldHeight = nil
+                }
+                // notices scroll with the result: a small panel keeps the field and footer visible
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 10) {
+                        if model.isPasteAccessDenied {
+                            NoticeView(
+                                message: "Доступ к буферу обмена запрещён — двойной Cmd+C не работает",
+                                action: .allowPasteboardAccess,
+                                perform: actions.perform
+                            )
+                        }
+                        if let error = model.screenTextError {
+                            NoticeView(
+                                message: error.message,
+                                action: error.action,
+                                perform: actions.perform
+                            )
+                        } else {
+                            stateContent
+                        }
+                        if case .result(let routed) = translator.state,
+                           let notice = routed.fallbackNotice {
+                            NoticeView(
+                                message: notice.message,
+                                action: notice.action,
+                                perform: actions.perform
+                            )
+                            .font(typography.font(size: typography.caption))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onGeometryChange(for: CGFloat.self) { proxy in
+                        proxy.size.height
+                    } action: { height in
+                        resultHeight.wrappedValue = height
+                    }
+                }
+                .frame(height: isAutoSized ? scrollHeight : nil)
+                .frame(
+                    minHeight: isAutoSized ? nil : QueryFieldSizing.minResultHeight,
+                    maxHeight: isAutoSized ? nil : .infinity
+                )
+                .scrollBounceBehavior(.basedOnSize)
+                .onGeometryChange(for: CGFloat.self) { proxy in
+                    proxy.size.height
+                } action: { height in
+                    scrollViewHeight.wrappedValue = height
                 }
             }
-            .frame(height: isAutoSized ? scrollHeight : nil)
-            .frame(maxHeight: isAutoSized ? nil : .infinity)
-            .scrollBounceBehavior(.basedOnSize)
             if case .result(let routed) = translator.state {
                 Divider()
                 FooterView(providerID: routed.providerID) {
@@ -101,6 +134,22 @@ struct TranslatorView: View {
             ResizeGrip(onResize: actions.resize, onReset: actions.resetSize)
                 .padding(2)
         }
+    }
+
+    private func dragDivider(by offset: CGFloat?, resultRoom: CGFloat, minHeight: CGFloat) {
+        guard let offset else {
+            dividerStart.wrappedValue = nil
+            return
+        }
+        let start = dividerStart.wrappedValue ?? (fieldHeight.wrappedValue, resultRoom)
+        dividerStart.wrappedValue = start
+        let height = QueryFieldSizing.height(
+            dragging: start.field,
+            by: offset,
+            minHeight: minHeight,
+            resultRoom: start.resultRoom
+        )
+        settings.queryFieldHeight = Double(height)
     }
 
     @ViewBuilder

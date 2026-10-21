@@ -43,8 +43,8 @@ Always use `make`, never raw `swift test`:
 
 - `Sources/GlossCore/` — models (incl. `Language` codes), `TextNormalizer`, `QueryClassifier`,
   `Router`, `TranslationController`, `AppSettings`, `AppIdentity` (bundle ID, log subsystem,
-  Keychain service), `PopupGeometry`, `HotKey`, secrets/Keychain, `YandexKey{Store,Check,Settings}`,
-  `SettingsNote`, `LanguagePack{State,Download}`, presentation helpers
+  Keychain service), `PopupGeometry`, `QueryFieldSizing`, `HotKey`, secrets/Keychain,
+  `YandexKey{Store,Check,Settings}`, `SettingsNote`, `LanguagePack{State,Download}`, presentation helpers
   (`ProviderError+Message`, `ResultPresentation`); `Providers/` (Yandex, Apple), `Clipboard/`
   (`ClipboardWatcher`, `DoubleCopyDetector`, `PasteboardReading`, `PasteAccess`),
   `ScreenText/` (`ScreenTextReader`, `ScreenCapturing`/`TextRecognizing`,
@@ -112,7 +112,10 @@ Always use `make`, never raw `swift test`:
   because overlay ones show only while scrolling. It keeps its own `UndoManager` and clears it
   when the query is replaced from outside: stale undo steps hung Cmd+Z. An input method
   composition does not reach the binding, so an outside change is told by `syncedText`, not
-  by the editor's string, and discards the composition.
+  by the editor's string, and discards the composition. `QueryDivider` below it sets
+  `AppSettings.queryFieldHeight` (clamped by `QueryFieldSizing`, tracked by the screen
+  cursor like the grip); the field then keeps that height with `layoutPriority(1)` and
+  gives way down to one line, the result area keeps `minResultHeight`.
 - A hidden `NSHostingController` window is 1×32 until shown: `SettingsWindowController` sets
   the content size from `fittingSize` before `center()`. The form height (`formHeight`)
   follows the window's screen.

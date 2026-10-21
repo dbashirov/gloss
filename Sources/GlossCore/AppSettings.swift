@@ -17,6 +17,7 @@ public final class AppSettings {
         static let pinnedTopLeftY = "pinnedTopLeftY"
         static let panelWidth = "panelWidth"
         static let panelHeight = "panelHeight"
+        static let queryFieldHeight = "queryFieldHeight"
         static let fontSize = "fontSize"
         static let panelFont = "panelFont"
         static let screenTextHotKeyEnabled = "screenTextHotKeyEnabled"
@@ -45,6 +46,11 @@ public final class AppSettings {
     /// Panel size chosen by the user; `nil` sizes the panel to its content.
     public var panelSize: CGSize? {
         didSet { savePanelSize() }
+    }
+
+    /// Query field height set with the divider; `nil` fits the field to its text.
+    public var queryFieldHeight: Double? {
+        didSet { saveQueryFieldHeight() }
     }
 
     /// Base text size of the panel in points, within `PanelTypography.sizeRange`.
@@ -76,6 +82,8 @@ public final class AppSettings {
         isPinned = defaults.bool(forKey: Key.isPinned)
         pinnedTopLeft = Self.loadPinnedTopLeft(from: defaults)
         panelSize = Self.loadPanelSize(from: defaults)
+        queryFieldHeight = (defaults.object(forKey: Key.queryFieldHeight) as? Double)
+            .flatMap { $0 > 0 ? $0 : nil }
         let fontSize = defaults.object(forKey: Key.fontSize) as? Double
         self.fontSize = PanelTypography.clamp(fontSize ?? PanelTypography.defaultSize)
         let storedFont = defaults.string(forKey: Key.panelFont)
@@ -153,6 +161,14 @@ public final class AppSettings {
         }
         defaults.set(Double(panelSize.width), forKey: Key.panelWidth)
         defaults.set(Double(panelSize.height), forKey: Key.panelHeight)
+    }
+
+    private func saveQueryFieldHeight() {
+        if let queryFieldHeight {
+            defaults.set(queryFieldHeight, forKey: Key.queryFieldHeight)
+        } else {
+            defaults.removeObject(forKey: Key.queryFieldHeight)
+        }
     }
 
     private static func loadDoubleCopyInterval(from defaults: UserDefaults) -> Duration {
