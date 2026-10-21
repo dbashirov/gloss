@@ -52,7 +52,7 @@ Always use `make`, never raw `swift test`:
 - `Sources/Gloss/` — `AppDelegate`, `AppEnvironment`, `MainMenu`, `StatusItemController`,
   `SystemPasteboard`, `SystemScreenCapture`, `GlobalHotKey`, `KeyNames`; `Panel/`
   (`TranslatorPanel`, `PanelController`), `Views/` (panel SwiftUI), `Settings/` (settings
-  window, `HotKeyRecorder`).
+  window, one view per tab, `HotKeyRecorder`).
 - `Tests/GlossCoreTests/` — one suite per type, each in `<Type>Tests.swift`; `Fakes/`,
   `Helpers/` (`fixture(_:)`, `Gate`, `StubURLProtocol`, tags, `UUID.v7()`, shared test data
   `runQuery`/`sentenceQuery`/`runCard`/`runText`/`UnexpectedError` in `TestData.swift`),
@@ -117,8 +117,11 @@ Always use `make`, never raw `swift test`:
   cursor like the grip); the field then keeps that height with `layoutPriority(1)` and
   gives way down to one line, the result area keeps `minResultHeight`.
 - A hidden `NSHostingController` window is 1×32 until shown: `SettingsWindowController` sets
-  the content size from `fittingSize` before `center()`. The form height (`formHeight`)
-  follows the window's screen.
+  the content size from `fittingSize` before `center()`.
+- Settings are pages (`SettingsTab`) under an `NSToolbar` with selectable items
+  (`toolbarStyle = .preference`), titled after the tab. Each page is a grouped `Form` with
+  `scrollDisabled` and vertical `fixedSize`: it reports its full height, and the hosting
+  controller's `.preferredContentSize` makes the window follow it with its top edge kept.
 - `PanelController` defers resizing to the next main-actor turn: the hosting view reports size
   changes mid-layout. Own placements are told from user drags with a 1 pt tolerance.
 - The panel follows its content (`hostingView.sizingOptions = [.intrinsicContentSize]`) until

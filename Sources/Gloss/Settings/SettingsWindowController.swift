@@ -2,14 +2,14 @@ import AppKit
 import GlossCore
 import SwiftUI
 
-/// SettingsWindowController owns the settings window. Showing it activates the
-/// accessory app so the window becomes key, as the language pack download requires.
+/// SettingsWindowController owns the settings window: a toolbar of tabs over the page of
+/// the selected one. Showing it activates the accessory app so the window becomes key,
+/// as the language pack download requires.
 @MainActor
-final class SettingsWindowController: NSObject {
+final class SettingsWindowController: NSObject, NSToolbarDelegate {
     private let model: SettingsModel
     private let window: NSWindow
     private var activationObserver: (any NSObjectProtocol)?
-    private var screenObservers: [any NSObjectProtocol] = []
 
     init(
         model: SettingsModel,
@@ -24,11 +24,18 @@ final class SettingsWindowController: NSObject {
             screenTextHotKey: screenTextHotKey,
             clipboardHotKey: clipboardHotKey
         ))
+        // the window takes the height of each page and keeps its top edge
+        content.sizingOptions = [.preferredContentSize]
         window = NSWindow(contentViewController: content)
-        window.title = "Настройки Gloss"
         window.styleMask = [.titled, .closable]
+        window.toolbarStyle = .preference
         window.isReleasedWhenClosed = false
         super.init()
+        let toolbar = NSToolbar(identifier: "settings")
+        toolbar.delegate = self
+        toolbar.displayMode = .iconAndLabel
+        window.toolbar = toolbar
+        select(model.tab)
         model.activateWindow = { [weak self] in
             self?.activate()
         }
@@ -42,25 +49,11 @@ final class SettingsWindowController: NSObject {
                 self?.refreshIfVisible()
             }
         }
-        // the window moved to another screen, or displays were attached or removed
-        let screenChanges = [
-            (NSWindow.didChangeScreenNotification, window as NSObject?),
-            (NSApplication.didChangeScreenParametersNotification, nil),
-        ]
-        let center = NotificationCenter.default
-        screenObservers = screenChanges.map { name, object in
-            center.addObserver(forName: name, object: object, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    self?.fitVisibleWindow()
-                }
-            }
-        }
     }
 
     func show() {
         if !window.isVisible {
             model.reload()
-            fitHeight(to: NSScreen.main)
             // a hidden hosting window gets its size only when shown: center() needs it now
             window.setContentSize(window.contentViewController?.view.fittingSize ?? .zero)
             window.center()
@@ -68,10 +61,53 @@ final class SettingsWindowController: NSObject {
         activate()
     }
 
-    /// Shows the window and starts the en↔ru pack download right away.
+    /// Shows the translation page and starts the en↔ru pack download right away.
     func showAndDownloadLanguagePack() {
+        select(.translation)
         show()
         model.downloadPack()
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        SettingsTab.allCases.map(\.itemIdentifier)
+    }
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        SettingsTab.allCases.map(\.itemIdentifier)
+    }
+
+    func toolbarSelectableItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        SettingsTab.allCases.map(\.itemIdentifier)
+    }
+
+    func toolbar(
+        _ toolbar: NSToolbar,
+        itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+        willBeInsertedIntoToolbar flag: Bool
+    ) -> NSToolbarItem? {
+        guard let tab = SettingsTab(rawValue: itemIdentifier.rawValue) else {
+            return nil
+        }
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        item.label = tab.title
+        item.image = NSImage(systemSymbolName: tab.symbolName, accessibilityDescription: tab.title)
+        item.target = self
+        item.action = #selector(tabClicked(_:))
+        return item
+    }
+
+    @objc private func tabClicked(_ item: NSToolbarItem) {
+        guard let tab = SettingsTab(rawValue: item.itemIdentifier.rawValue) else {
+            return
+        }
+        select(tab)
+    }
+
+    // macOS settings windows are titled after the selected tab
+    private func select(_ tab: SettingsTab) {
+        model.tab = tab
+        window.toolbar?.selectedItemIdentifier = tab.itemIdentifier
+        window.title = tab.title
     }
 
     private func activate() {
@@ -79,25 +115,16 @@ final class SettingsWindowController: NSObject {
         window.makeKeyAndOrderFront(nil)
     }
 
-    // the form scrolls: the window must not go past the edge of a low screen
-    private func fitHeight(to screen: NSScreen?) {
-        guard let screen else {
-            return
-        }
-        model.formHeight = min(SettingsModel.preferredFormHeight, screen.visibleFrame.height - 40)
-    }
-
-    private func fitVisibleWindow() {
-        guard window.isVisible else {
-            return
-        }
-        fitHeight(to: window.screen)
-    }
-
     private func refreshIfVisible() {
         guard window.isVisible else {
             return
         }
         model.refreshStatuses()
+    }
+}
+
+private extension SettingsTab {
+    var itemIdentifier: NSToolbarItem.Identifier {
+        NSToolbarItem.Identifier(rawValue)
     }
 }
