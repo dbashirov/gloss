@@ -29,10 +29,13 @@ public struct AppleTranslationProvider: TranslationProvider {
             throw ProviderError.notFound
         }
         try Task.checkCancellation()
-        let translation: String
+        // each paragraph is translated on its own, so the translation keeps the line breaks
+        let lines = query.text.split(separator: "\n", omittingEmptySubsequences: false)
+        let paragraphs = lines.filter { !$0.isEmpty }.map(String.init)
+        let translations: [String]
         do {
-            translation = try await translator.translate(
-                query.text,
+            translations = try await translator.translate(
+                paragraphs,
                 from: query.source,
                 to: query.target
             )
@@ -40,6 +43,10 @@ public struct AppleTranslationProvider: TranslationProvider {
             try Task.checkCancellation()
             throw Self.mapError(error)
         }
+        var remaining = translations.makeIterator()
+        let translation = lines
+            .map { $0.isEmpty ? "" : remaining.next() ?? "" }
+            .joined(separator: "\n")
         return .text(TextTranslation(source: query.text, translation: translation))
     }
 

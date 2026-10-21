@@ -66,14 +66,18 @@ final class FakeTextTranslator: TextTranslator {
     }
 
     func translate(
-        _ text: String,
+        _ texts: [String],
         from source: Language,
         to target: Language
-    ) async throws -> String {
+    ) async throws -> [String] {
         calls.withLock { calls in
-            calls.texts.append(text)
+            calls.texts += texts
             calls.translateDirections.append(Direction(source: source, target: target))
         }
-        return try await handler(text)
+        var translations: [String] = []
+        for text in texts {
+            translations.append(try await handler(text))
+        }
+        return translations
     }
 }

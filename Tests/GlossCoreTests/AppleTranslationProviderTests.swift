@@ -28,6 +28,20 @@ struct AppleTranslationProviderTests {
         #expect(translator.texts == ["Hello, how are you?"])
     }
 
+    @Test func translatesParagraphsSeparately() async throws {
+        let translator = FakeTextTranslator { "<\($0)>" }
+        let provider = AppleTranslationProvider(translator: translator)
+        let text = "One.\nTwo.\n\nThree"
+        let query = Query(text: text, source: .en, target: .ru, kind: .sentence)
+
+        let result = try await provider.translate(query)
+
+        let translation = "<One.>\n<Two.>\n\n<Three>"
+        #expect(result == .text(TextTranslation(source: text, translation: translation)))
+        #expect(translator.texts == ["One.", "Two.", "Three"])
+        #expect(translator.translateDirections.count == 1)
+    }
+
     @Test func returnsTextForDictionaryQuery() async throws {
         let provider = AppleTranslationProvider(translator: FakeTextTranslator(translation: "run"))
 
@@ -164,5 +178,21 @@ struct SystemTextTranslatorIntegrationTests {
         }
         #expect(!text.translation.isEmpty)
         #expect(text.translation != "Good morning")
+    }
+
+    @Test func keepsParagraphsWithInstalledPack() async throws {
+        let provider = AppleTranslationProvider(translator: SystemTextTranslator())
+        let source = "Good morning.\n\nSee you tomorrow."
+        let query = Query(text: source, source: .en, target: .ru, kind: .sentence)
+
+        let result = try await provider.translate(query)
+
+        guard case .text(let text) = result else {
+            Issue.record("expected a text translation, got \(result)")
+            return
+        }
+        let paragraphs = text.translation.components(separatedBy: "\n\n")
+        #expect(paragraphs.count == 2)
+        #expect(paragraphs.allSatisfy { !$0.isEmpty && !$0.contains("\n") })
     }
 }

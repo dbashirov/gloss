@@ -8,12 +8,13 @@ public protocol TextTranslator: Sendable {
         to target: Language
     ) async -> LanguageAvailability.Status
 
+    /// Translates each text on its own and returns the translations in the same order.
     /// Throws `TranslationError` or `CancellationError`.
     func translate(
-        _ text: String,
+        _ texts: [String],
         from source: Language,
         to target: Language
-    ) async throws -> String
+    ) async throws -> [String]
 }
 
 /// SystemTextTranslator translates on device with Apple Translation; it works only
@@ -31,11 +32,15 @@ public struct SystemTextTranslator: TextTranslator {
     }
 
     public func translate(
-        _ text: String,
+        _ texts: [String],
         from source: Language,
         to target: Language
-    ) async throws -> String {
+    ) async throws -> [String] {
         let session = TranslationSession(installedSource: source.locale, target: target.locale)
-        return try await session.translate(text).targetText
+        var translations: [String] = []
+        for text in texts {
+            translations.append(try await session.translate(text).targetText)
+        }
+        return translations
     }
 }

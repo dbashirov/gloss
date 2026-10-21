@@ -6,9 +6,6 @@ public enum QueryClassifier {
     public static let maxDictionaryWords = 3
     static let shortTextWords = 2
 
-    private static let sentenceTerminators: Set<Character> = [".", "!", "?", "…"]
-    private static let closingWrappers: Set<Character> = ["\"", "'", "»", "”", "’", ")", "]"]
-
     /// Classifies text that has already passed `TextNormalizer`.
     public static func classify(_ text: String) -> Query {
         let words = words(in: text)
@@ -47,8 +44,8 @@ public enum QueryClassifier {
         if !text.contains(where: \.isLetter) || words.contains(where: looksLikeSecret) {
             return .sentence
         }
-        let tail = text.reversed().first { !closingWrappers.contains($0) }
-        if let tail, sentenceTerminators.contains(tail) {
+        // lines kept apart by the normalizer are not a dictionary word
+        if text.contains(where: \.isNewline) || TextNormalizer.endsSentence(text) {
             return .sentence
         }
         return .dictionary

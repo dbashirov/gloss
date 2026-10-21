@@ -56,6 +56,13 @@ struct QueryClassifierTests {
         #expect(query.source == .en)
     }
 
+    @Test(arguments: ["Hello\nworld", "Title\n\nText"])
+    func treatsLinesAsSentence(text: String) {
+        let query = QueryClassifier.classify(text)
+        #expect(query.kind == .sentence)
+        #expect(query.text == text)
+    }
+
     @Test(arguments: [
         ("\"run\"", "run"),
         ("«бег»", "бег"),

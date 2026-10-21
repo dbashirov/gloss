@@ -143,6 +143,11 @@ Always use `make`, never raw `swift test`:
   press first) and takes the press with a local `NSEvent` monitor; `HotKey.isAllowed` wants
   two modifiers (a lone ⌘ or ⌥ would hijack ⌘C or typing) except for F1-F20. `VisionTextRecognizerTests`
   run the real Vision on text drawn with CoreText.
+- Paragraphs: `TextNormalizer` keeps a line break only after a sentence end or `:` and
+  before a list marker, an empty line stays one; any other break is a wrapped line and
+  becomes a space. `AppleTranslationProvider` translates each line on its own (one
+  `TranslationSession` per query) and joins them back, so the result keeps the breaks.
+  `RecognizedText` still joins screen lines with spaces.
 - Double-copy settings reach the watcher through one channel: `AppDelegate` subscribes with
   `AppSettings.observeDoubleCopy`; the tray menu and the settings window only change
   `AppSettings`.
