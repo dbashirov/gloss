@@ -23,6 +23,9 @@ public final class AppSettings {
         static let screenTextHotKeyEnabled = "screenTextHotKeyEnabled"
         static let screenTextHotKeyCode = "screenTextHotKeyCode"
         static let screenTextHotKeyModifiers = "screenTextHotKeyModifiers"
+        static let clipboardHotKeyEnabled = "clipboardHotKeyEnabled"
+        static let clipboardHotKeyCode = "clipboardHotKeyCode"
+        static let clipboardHotKeyModifiers = "clipboardHotKeyModifiers"
     }
 
     public var doubleCopyEnabled: Bool {
@@ -70,7 +73,30 @@ public final class AppSettings {
 
     /// The combination that selects a screen area to translate its text.
     public var screenTextHotKey: HotKey {
-        didSet { saveScreenTextHotKey() }
+        didSet {
+            save(
+                screenTextHotKey,
+                code: Key.screenTextHotKeyCode,
+                modifiers: Key.screenTextHotKeyModifiers
+            )
+        }
+    }
+
+    /// Whether `clipboardHotKey` translates the text on the pasteboard.
+    public var clipboardHotKeyEnabled: Bool {
+        didSet { defaults.set(clipboardHotKeyEnabled, forKey: Key.clipboardHotKeyEnabled) }
+    }
+
+    /// The combination that translates the text on the pasteboard, for apps where
+    /// double Cmd+C does not change the pasteboard twice.
+    public var clipboardHotKey: HotKey {
+        didSet {
+            save(
+                clipboardHotKey,
+                code: Key.clipboardHotKeyCode,
+                modifiers: Key.clipboardHotKeyModifiers
+            )
+        }
     }
 
     @ObservationIgnored private let defaults: UserDefaults
@@ -90,7 +116,20 @@ public final class AppSettings {
         panelFont = storedFont.flatMap(PanelFont.init(storageValue:)) ?? .system
         screenTextHotKeyEnabled = defaults.object(forKey: Key.screenTextHotKeyEnabled) as? Bool
             ?? true
-        screenTextHotKey = Self.loadScreenTextHotKey(from: defaults)
+        let screenTextHotKey = Self.loadHotKey(
+            from: defaults,
+            code: Key.screenTextHotKeyCode,
+            modifiers: Key.screenTextHotKeyModifiers
+        ) ?? .screenTextDefault
+        self.screenTextHotKey = screenTextHotKey
+        clipboardHotKeyEnabled = defaults.object(forKey: Key.clipboardHotKeyEnabled) as? Bool
+            ?? true
+        let clipboardHotKey = Self.loadHotKey(
+            from: defaults,
+            code: Key.clipboardHotKeyCode,
+            modifiers: Key.clipboardHotKeyModifiers
+        ) ?? .clipboardDefault
+        self.clipboardHotKey = Self.distinct(clipboardHotKey, from: screenTextHotKey)
         if defaults.object(forKey: Key.legacyDoubleCopyInterval) != nil {
             saveDoubleCopyInterval()
         }
@@ -105,12 +144,14 @@ public final class AppSettings {
         }
     }
 
-    /// Calls `onChange` after every change of `screenTextHotKeyEnabled` or
-    /// `screenTextHotKey`, like `observeDoubleCopy(_:)`.
-    public func observeScreenTextHotKey(_ onChange: @escaping @MainActor @Sendable () -> Void) {
+    /// Calls `onChange` after every change of a hot key or its switch, like
+    /// `observeDoubleCopy(_:)`.
+    public func observeHotKeys(_ onChange: @escaping @MainActor @Sendable () -> Void) {
         observe(onChange) { settings in
             _ = settings.screenTextHotKeyEnabled
             _ = settings.screenTextHotKey
+            _ = settings.clipboardHotKeyEnabled
+            _ = settings.clipboardHotKey
         }
     }
 
@@ -138,9 +179,9 @@ public final class AppSettings {
         defaults.removeObject(forKey: Key.legacyDoubleCopyInterval)
     }
 
-    private func saveScreenTextHotKey() {
-        defaults.set(screenTextHotKey.keyCode, forKey: Key.screenTextHotKeyCode)
-        defaults.set(screenTextHotKey.modifiers.rawValue, forKey: Key.screenTextHotKeyModifiers)
+    private func save(_ hotKey: HotKey, code: String, modifiers: String) {
+        defaults.set(hotKey.keyCode, forKey: code)
+        defaults.set(hotKey.modifiers.rawValue, forKey: modifiers)
     }
 
     private func savePinnedTopLeft() {
@@ -181,14 +222,27 @@ public final class AppSettings {
         return DoubleCopyDetector.defaultInterval
     }
 
-    private static func loadScreenTextHotKey(from defaults: UserDefaults) -> HotKey {
-        guard let keyCode = defaults.object(forKey: Key.screenTextHotKeyCode) as? Int,
-              let modifiers = defaults.object(forKey: Key.screenTextHotKeyModifiers) as? Int
+    private static func loadHotKey(
+        from defaults: UserDefaults,
+        code: String,
+        modifiers: String
+    ) -> HotKey? {
+        guard let keyCode = defaults.object(forKey: code) as? Int,
+              let modifiers = defaults.object(forKey: modifiers) as? Int
         else {
-            return .screenTextDefault
+            return nil
         }
         let hotKey = HotKey(keyCode: keyCode, modifiers: HotKey.Modifiers(rawValue: modifiers))
-        return hotKey.isAllowed ? hotKey : .screenTextDefault
+        return hotKey.isAllowed ? hotKey : nil
+    }
+
+    // one combination cannot do both: a screen text key set to ⌘⇧1 before the clipboard
+    // key existed leaves ⌘⇧2 free
+    private static func distinct(_ hotKey: HotKey, from other: HotKey) -> HotKey {
+        guard hotKey == other else {
+            return hotKey
+        }
+        return other == .clipboardDefault ? .screenTextDefault : .clipboardDefault
     }
 
     private static func loadPinnedTopLeft(from defaults: UserDefaults) -> CGPoint? {

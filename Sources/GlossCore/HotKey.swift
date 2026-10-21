@@ -18,6 +18,8 @@ public struct HotKey: Equatable, Sendable {
 
     /// ⌘⇧2: the key code of 2 on the ANSI layout.
     public static let screenTextDefault = HotKey(keyCode: 0x13, modifiers: [.command, .shift])
+    /// ⌘⇧1: the key code of 1 on the ANSI layout.
+    public static let clipboardDefault = HotKey(keyCode: 0x12, modifiers: [.command, .shift])
 
     private static let functionKeyNames: [Int: String] = [
         0x7A: "F1", 0x78: "F2", 0x63: "F3", 0x76: "F4", 0x60: "F5", 0x61: "F6",

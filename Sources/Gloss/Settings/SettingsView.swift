@@ -10,6 +10,7 @@ struct SettingsView: View {
     @Bindable var model: SettingsModel
     @Bindable var settings: AppSettings
     let screenTextHotKey: GlobalHotKey
+    let clipboardHotKey: GlobalHotKey
 
     var body: some View {
         Form {
@@ -20,6 +21,9 @@ struct SettingsView: View {
             }
             Section("Текст с экрана") {
                 screenText
+            }
+            Section("Скопированный текст") {
+                clipboardText
             }
             Section("Внешний вид") {
                 fontPicker
@@ -131,27 +135,15 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var screenText: some View {
-        Toggle(
-            "Выделить область и перевести по горячей клавише",
-            isOn: $settings.screenTextHotKeyEnabled
+        HotKeyRow(
+            title: "Выделить область и перевести по горячей клавише",
+            isOn: $settings.screenTextHotKeyEnabled,
+            hotKey: $settings.screenTextHotKey,
+            defaultHotKey: .screenTextDefault,
+            otherHotKey: settings.clipboardHotKey,
+            isTaken: screenTextHotKey.isTaken,
+            onRecordingChange: suspendHotKeys
         )
-        LabeledContent("Горячая клавиша") {
-            HStack(alignment: .firstTextBaseline) {
-                if settings.screenTextHotKey != .screenTextDefault {
-                    Button("Сбросить") {
-                        settings.screenTextHotKey = .screenTextDefault
-                    }
-                }
-                HotKeyRecorder(
-                    hotKey: settings.screenTextHotKey,
-                    onRecord: { settings.screenTextHotKey = $0 },
-                    onRecordingChange: { screenTextHotKey.isSuspended = $0 }
-                )
-            }
-        }
-        if screenTextHotKey.isTaken {
-            Caption("Сочетание занято другим приложением: выберите другое")
-        }
         Caption("Без горячей клавиши - пункт «Перевести текст с экрана» в меню иконки")
         LabeledContent(
             "Доступ к записи экрана",
@@ -168,11 +160,68 @@ struct SettingsView: View {
         }
     }
 
+    @ViewBuilder
+    private var clipboardText: some View {
+        HotKeyRow(
+            title: "Перевести скопированный текст по горячей клавише",
+            isOn: $settings.clipboardHotKeyEnabled,
+            hotKey: $settings.clipboardHotKey,
+            defaultHotKey: .clipboardDefault,
+            otherHotKey: settings.screenTextHotKey,
+            isTaken: clipboardHotKey.isTaken,
+            onRecordingChange: suspendHotKeys
+        )
+        Caption(
+            "Когда двойной Cmd+C не срабатывает: например, терминал сам копирует выделение "
+                + "мышью, и второе нажатие не меняет буфер"
+        )
+    }
+
+    // a press of the other hot key must reach the recorder too
+    private func suspendHotKeys(_ isSuspended: Bool) {
+        screenTextHotKey.isSuspended = isSuspended
+        clipboardHotKey.isSuspended = isSuspended
+    }
+
     private var intervalMilliseconds: Binding<Double> {
         Binding(
             get: { settings.doubleCopyInterval.milliseconds },
             set: { settings.doubleCopyInterval = .milliseconds($0) }
         )
+    }
+}
+
+/// HotKeyRow turns a global hot key on and off and records its combination.
+private struct HotKeyRow: View {
+    let title: String
+    @Binding var isOn: Bool
+    @Binding var hotKey: HotKey
+    let defaultHotKey: HotKey
+    /// The combination of the other Gloss hot key, which this one cannot take.
+    let otherHotKey: HotKey
+    let isTaken: Bool
+    let onRecordingChange: (Bool) -> Void
+
+    var body: some View {
+        Toggle(title, isOn: $isOn)
+        LabeledContent("Горячая клавиша") {
+            HStack(alignment: .firstTextBaseline) {
+                if hotKey != defaultHotKey && otherHotKey != defaultHotKey {
+                    Button("Сбросить") {
+                        hotKey = defaultHotKey
+                    }
+                }
+                HotKeyRecorder(
+                    hotKey: hotKey,
+                    reserved: otherHotKey,
+                    onRecord: { hotKey = $0 },
+                    onRecordingChange: onRecordingChange
+                )
+            }
+        }
+        if isOn && isTaken {
+            Caption("Сочетание занято другим приложением: выберите другое")
+        }
     }
 }
 

@@ -39,6 +39,8 @@ struct AppSettingsTests {
         #expect(settings.panelFont == .system)
         #expect(settings.screenTextHotKeyEnabled)
         #expect(settings.screenTextHotKey == .screenTextDefault)
+        #expect(settings.clipboardHotKeyEnabled)
+        #expect(settings.clipboardHotKey == .clipboardDefault)
     }
 
     @Test func reloadsSavedValues() throws {
@@ -56,6 +58,8 @@ struct AppSettingsTests {
         settings.panelFont = .family("Georgia")
         settings.screenTextHotKeyEnabled = false
         settings.screenTextHotKey = HotKey(keyCode: 0x11, modifiers: [.control, .option])
+        settings.clipboardHotKeyEnabled = false
+        settings.clipboardHotKey = HotKey(keyCode: 0x08, modifiers: [.control, .option])
 
         let reloaded = AppSettings(defaults: try makeDefaults(suiteName))
         #expect(!reloaded.doubleCopyEnabled)
@@ -68,6 +72,8 @@ struct AppSettingsTests {
         #expect(reloaded.panelFont == .family("Georgia"))
         #expect(!reloaded.screenTextHotKeyEnabled)
         #expect(reloaded.screenTextHotKey == HotKey(keyCode: 0x11, modifiers: [.control, .option]))
+        #expect(!reloaded.clipboardHotKeyEnabled)
+        #expect(reloaded.clipboardHotKey == HotKey(keyCode: 0x08, modifiers: [.control, .option]))
     }
 
     @Test(arguments: [
@@ -84,6 +90,32 @@ struct AppSettingsTests {
         }
 
         #expect(AppSettings(defaults: defaults).screenTextHotKey == .screenTextDefault)
+    }
+
+    @Test func clipboardHotKeyLeavesScreenTextOne() throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        // a screen text key moved to ⌘⇧1 before the clipboard key existed
+        AppSettings(defaults: try makeDefaults(suiteName)).screenTextHotKey = .clipboardDefault
+
+        let settings = AppSettings(defaults: try makeDefaults(suiteName))
+
+        #expect(settings.screenTextHotKey == .clipboardDefault)
+        #expect(settings.clipboardHotKey == .screenTextDefault)
+    }
+
+    @Test func storedClipboardHotKeyEqualToScreenTextOneFallsBackToDefault() throws {
+        let suiteName = makeSuiteName()
+        defer { removeSuite(suiteName) }
+        let hotKey = HotKey(keyCode: 0x11, modifiers: [.control, .option])
+        let settings = AppSettings(defaults: try makeDefaults(suiteName))
+        settings.screenTextHotKey = hotKey
+        settings.clipboardHotKey = hotKey
+
+        let reloaded = AppSettings(defaults: try makeDefaults(suiteName))
+
+        #expect(reloaded.screenTextHotKey == hotKey)
+        #expect(reloaded.clipboardHotKey == .clipboardDefault)
     }
 
     @Test func unknownStoredFontFallsBackToSystem() throws {
@@ -246,12 +278,12 @@ struct AppSettingsTests {
     }
 
     @Test(.timeLimit(.minutes(1)))
-    func reportsScreenTextHotKeyChanges() async throws {
+    func reportsHotKeyChanges() async throws {
         let suiteName = makeSuiteName()
         defer { removeSuite(suiteName) }
         let settings = AppSettings(defaults: try makeDefaults(suiteName))
         let (changes, continuation) = AsyncStream.makeStream(of: Bool.self)
-        settings.observeScreenTextHotKey {
+        settings.observeHotKeys {
             continuation.yield(settings.screenTextHotKeyEnabled)
         }
         var iterator = changes.makeAsyncIterator()
@@ -263,9 +295,15 @@ struct AppSettingsTests {
         let second = try #require(await iterator.next())
         settings.screenTextHotKey = HotKey(keyCode: 0x11, modifiers: [.control, .option])
         let third = try #require(await iterator.next())
+        settings.clipboardHotKeyEnabled = false
+        let fourth = try #require(await iterator.next())
+        settings.clipboardHotKey = HotKey(keyCode: 0x08, modifiers: [.control, .option])
+        let fifth = try #require(await iterator.next())
 
         #expect(!first)
         #expect(second)
         #expect(third)
+        #expect(fourth)
+        #expect(fifth)
     }
 }

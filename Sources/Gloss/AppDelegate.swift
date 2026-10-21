@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var panel: PanelController?
     private var settingsWindow: SettingsWindowController?
     private var screenTextHotKey: GlobalHotKey?
+    private var clipboardHotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -45,6 +46,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onReadScreenText: { [weak self] in
                 self?.readScreenText()
             },
+            onTranslateClipboard: { [weak self] in
+                self?.translateClipboard()
+            },
             onOpenSettings: { [weak self] in
                 self?.openSettings()
             }
@@ -56,10 +60,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         screenTextHotKey = GlobalHotKey { [weak self] in
             self?.readScreenText()
         }
-        environment.settings.observeScreenTextHotKey { [weak self] in
-            self?.applyScreenTextHotKey()
+        clipboardHotKey = GlobalHotKey { [weak self] in
+            self?.translateClipboard()
         }
-        applyScreenTextHotKey()
+        environment.settings.observeHotKeys { [weak self] in
+            self?.applyHotKeys()
+        }
+        applyHotKeys()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -113,16 +120,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func applyScreenTextHotKey() {
-        guard let environment, let screenTextHotKey else {
+    /// Translates the text on the pasteboard: for apps where double Cmd+C does not
+    /// change the pasteboard twice, such as a terminal that copies a mouse selection itself.
+    private func translateClipboard() {
+        guard let environment, let panel else {
+            return
+        }
+        switch environment.pasteboard.copiedText() {
+        case .text(let text):
+            panel.showTranslation(of: text)
+        case .unreadable, .empty:
+            // the panel shows the paste access hint when access is denied
+            panel.showManualInput()
+        }
+    }
+
+    private func applyHotKeys() {
+        guard let environment, let screenTextHotKey, let clipboardHotKey else {
             return
         }
         let settings = environment.settings
-        screenTextHotKey.combination = settings.screenTextHotKeyEnabled
-            ? settings.screenTextHotKey
-            : nil
-        if screenTextHotKey.isTaken {
-            let name = KeyNames.displayName(of: settings.screenTextHotKey)
+        let screenText = settings.screenTextHotKeyEnabled ? settings.screenTextHotKey : nil
+        let clipboard = settings.clipboardHotKeyEnabled ? settings.clipboardHotKey : nil
+        apply(screenText, to: screenTextHotKey)
+        apply(clipboard, to: clipboardHotKey)
+    }
+
+    private func apply(_ combination: HotKey?, to hotKey: GlobalHotKey) {
+        hotKey.combination = combination
+        if hotKey.isTaken, let combination {
+            let name = KeyNames.displayName(of: combination)
             logger.warning("\(name, privacy: .public) is taken by another app: use the menu")
         }
     }
@@ -132,7 +159,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let settingsWindow {
             return settingsWindow
         }
-        guard let environment, let screenTextHotKey else {
+        guard let environment, let screenTextHotKey, let clipboardHotKey else {
             return nil
         }
         let model = SettingsModel(
@@ -144,7 +171,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = SettingsWindowController(
             model: model,
             settings: environment.settings,
-            screenTextHotKey: screenTextHotKey
+            screenTextHotKey: screenTextHotKey,
+            clipboardHotKey: clipboardHotKey
         )
         settingsWindow = controller
         return controller

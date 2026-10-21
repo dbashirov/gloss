@@ -11,12 +11,18 @@ final class SettingsWindowController: NSObject {
     private var activationObserver: (any NSObjectProtocol)?
     private var screenObservers: [any NSObjectProtocol] = []
 
-    init(model: SettingsModel, settings: AppSettings, screenTextHotKey: GlobalHotKey) {
+    init(
+        model: SettingsModel,
+        settings: AppSettings,
+        screenTextHotKey: GlobalHotKey,
+        clipboardHotKey: GlobalHotKey
+    ) {
         self.model = model
         let content = NSHostingController(rootView: SettingsView(
             model: model,
             settings: settings,
-            screenTextHotKey: screenTextHotKey
+            screenTextHotKey: screenTextHotKey,
+            clipboardHotKey: clipboardHotKey
         ))
         window = NSWindow(contentViewController: content)
         window.title = "Настройки Gloss"

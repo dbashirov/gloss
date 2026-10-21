@@ -40,6 +40,8 @@ struct HotKeyTests {
     @Test func defaultIsAllowed() {
         #expect(HotKey.screenTextDefault.isAllowed)
         #expect(HotKey.screenTextDefault.displayName(keyName: "2") == "⇧⌘2")
+        #expect(HotKey.clipboardDefault.isAllowed)
+        #expect(HotKey.clipboardDefault.displayName(keyName: "1") == "⇧⌘1")
     }
 
     @Test func showsModifiersInMenuOrder() {

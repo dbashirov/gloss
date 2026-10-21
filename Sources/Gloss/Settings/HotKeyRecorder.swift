@@ -7,6 +7,8 @@ import SwiftUI
 /// HotKeyRecorder shows a hot key; a click records a new one from the next key press.
 struct HotKeyRecorder: View {
     let hotKey: HotKey
+    /// A combination already given to another action, which a recording rejects.
+    let reserved: HotKey
     let onRecord: (HotKey) -> Void
     /// Called with `true` when recording starts and `false` when it ends.
     let onRecordingChange: (Bool) -> Void
@@ -20,7 +22,11 @@ struct HotKeyRecorder: View {
                 if recording.isActive {
                     recording.stop()
                 } else {
-                    recording.start(onRecord: onRecord, onChange: onRecordingChange)
+                    recording.start(
+                        reserved: reserved,
+                        onRecord: onRecord,
+                        onChange: onRecordingChange
+                    )
                 }
             }
             .help("Нажмите и введите новое сочетание, Esc - отмена")
@@ -46,14 +52,20 @@ private final class HotKeyRecording {
     @ObservationIgnored private weak var window: NSWindow?
     @ObservationIgnored private var monitor: Any?
     @ObservationIgnored private var resignObserver: (any NSObjectProtocol)?
+    @ObservationIgnored private var reserved: HotKey?
     @ObservationIgnored private var onRecord: (HotKey) -> Void = { _ in }
     @ObservationIgnored private var onChange: (Bool) -> Void = { _ in }
 
-    func start(onRecord: @escaping (HotKey) -> Void, onChange: @escaping (Bool) -> Void) {
+    func start(
+        reserved: HotKey,
+        onRecord: @escaping (HotKey) -> Void,
+        onChange: @escaping (Bool) -> Void
+    ) {
         guard !isActive, let window = NSApp.keyWindow else {
             return
         }
         self.window = window
+        self.reserved = reserved
         self.onRecord = onRecord
         self.onChange = onChange
         isActive = true
@@ -109,6 +121,10 @@ private final class HotKeyRecording {
         let hotKey = HotKey(keyCode: Int(event.keyCode), modifiers: modifiers)
         guard hotKey.isAllowed else {
             hint = "Нужны два модификатора, например ⌘⇧ или ⌃⌥"
+            return true
+        }
+        guard hotKey != reserved else {
+            hint = "Это сочетание уже занято в Gloss"
             return true
         }
         let onRecord = onRecord

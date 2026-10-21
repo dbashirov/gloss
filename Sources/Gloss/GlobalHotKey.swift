@@ -7,8 +7,9 @@ import Observation
 @MainActor
 @Observable
 final class GlobalHotKey {
-    // 'Gloss'
-    private static let signature: OSType = 0x456E_676C
+    // 'Glos'
+    private static let signature: OSType = 0x476C_6F73
+    private static var lastID: UInt32 = 0
 
     /// The combination to register; `nil` turns the hot key off.
     var combination: HotKey? {
@@ -23,11 +24,14 @@ final class GlobalHotKey {
     /// Whether another app holds the combination.
     private(set) var isTaken = false
 
+    @ObservationIgnored private let id: UInt32
     @ObservationIgnored private let action: () -> Void
     @ObservationIgnored private var hotKey: EventHotKeyRef?
     @ObservationIgnored private var handler: EventHandlerRef?
 
     init(action: @escaping () -> Void) {
+        Self.lastID += 1
+        id = Self.lastID
         self.action = action
     }
 
@@ -38,11 +42,10 @@ final class GlobalHotKey {
             return
         }
         installHandler()
-        let id = EventHotKeyID(signature: Self.signature, id: 1)
         let status = RegisterEventHotKey(
             UInt32(combination.keyCode),
             combination.modifiers.carbonFlags,
-            id,
+            EventHotKeyID(signature: Self.signature, id: id),
             GetApplicationEventTarget(),
             0,
             &hotKey
@@ -58,7 +61,8 @@ final class GlobalHotKey {
         self.hotKey = nil
     }
 
-    // the instance lives as long as the app: the handler keeps an unretained pointer to it
+    // the instance lives as long as the app: the handler keeps an unretained pointer to it;
+    // every instance has its own handler, a press of another one's key goes on to the next
     private func installHandler() {
         guard handler == nil else {
             return
@@ -69,15 +73,31 @@ final class GlobalHotKey {
         )
         InstallEventHandler(
             GetApplicationEventTarget(),
-            { _, _, userData in
-                guard let userData else {
+            { _, event, userData in
+                var pressed = EventHotKeyID()
+                let status = GetEventParameter(
+                    event,
+                    EventParamName(kEventParamDirectObject),
+                    EventParamType(typeEventHotKeyID),
+                    nil,
+                    MemoryLayout<EventHotKeyID>.size,
+                    nil,
+                    &pressed
+                )
+                guard status == noErr, let userData else {
                     return OSStatus(eventNotHandledErr)
                 }
                 // Carbon delivers application events on the main thread
-                MainActor.assumeIsolated {
-                    Unmanaged<GlobalHotKey>.fromOpaque(userData).takeUnretainedValue().action()
+                return MainActor.assumeIsolated {
+                    let hotKey = Unmanaged<GlobalHotKey>.fromOpaque(userData).takeUnretainedValue()
+                    let isOwn = pressed.signature == GlobalHotKey.signature
+                        && pressed.id == hotKey.id
+                    guard isOwn else {
+                        return OSStatus(eventNotHandledErr)
+                    }
+                    hotKey.action()
+                    return noErr
                 }
-                return noErr
             },
             1,
             &eventType,

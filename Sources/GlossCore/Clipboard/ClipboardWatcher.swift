@@ -99,16 +99,13 @@ public final class ClipboardWatcher {
         guard detector.register(at: now(), isConcealed: isConcealed) else {
             return
         }
-        guard types.contains(PasteboardType.string) else {
-            return
-        }
-        guard let text = pasteboard.string() else {
+        switch pasteboard.copiedText() {
+        case .text(let text):
+            onDoubleCopy?(text)
+        case .unreadable:
             onUnreadableCopy?()
-            return
+        case .empty:
+            break
         }
-        guard !text.allSatisfy(\.isWhitespace) else {
-            return
-        }
-        onDoubleCopy?(text)
     }
 }

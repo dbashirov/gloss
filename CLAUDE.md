@@ -46,8 +46,8 @@ Always use `make`, never raw `swift test`:
   Keychain service), `PopupGeometry`, `QueryFieldSizing`, `HotKey`, secrets/Keychain,
   `YandexKey{Store,Check,Settings}`, `SettingsNote`, `LanguagePack{State,Download}`, presentation helpers
   (`ProviderError+Message`, `ResultPresentation`); `Providers/` (Yandex, Apple), `Clipboard/`
-  (`ClipboardWatcher`, `DoubleCopyDetector`, `PasteboardReading`, `PasteAccess`),
-  `ScreenText/` (`ScreenTextReader`, `ScreenCapturing`/`TextRecognizing`,
+  (`ClipboardWatcher`, `DoubleCopyDetector`, `PasteboardReading`, `CopiedText`,
+  `PasteAccess`), `ScreenText/` (`ScreenTextReader`, `ScreenCapturing`/`TextRecognizing`,
   `VisionTextRecognizer`, `RecognizedText`, `ScreenTextError`).
 - `Sources/Gloss/` — `AppDelegate`, `AppEnvironment`, `MainMenu`, `StatusItemController`,
   `SystemPasteboard`, `SystemScreenCapture`, `GlobalHotKey`, `KeyNames`; `Panel/`
@@ -148,6 +148,12 @@ Always use `make`, never raw `swift test`:
   becomes a space. `AppleTranslationProvider` translates each line on its own (one
   `TranslationSession` per query) and joins them back, so the result keeps the breaks.
   `RecognizedText` still joins screen lines with spaces.
+- Two `GlobalHotKey`s (screen text, clipboard) share the application event target: each
+  has its own `EventHotKeyID.id` and its handler returns `eventNotHandledErr` for another
+  one's press. Recording one suspends both; the two combinations never match
+  (`HotKeyRecorder.reserved`, `AppSettings` moves a stored clash to the other default).
+  The clipboard hot key exists for terminals where Claude Code copies a mouse selection
+  itself and Cmd+C then leaves the pasteboard unchanged (no double copy to see).
 - Double-copy settings reach the watcher through one channel: `AppDelegate` subscribes with
   `AppSettings.observeDoubleCopy`; the tray menu and the settings window only change
   `AppSettings`.
