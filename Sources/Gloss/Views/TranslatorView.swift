@@ -156,7 +156,7 @@ struct TranslatorView: View {
     private var stateContent: some View {
         switch translator.state {
         case .idle:
-            Text("Введите слово или фразу и нажмите Enter")
+            Text("Введите слово или фразу и нажмите Enter, ⇧Enter - новая строка")
                 .foregroundStyle(.secondary)
         case .loading:
             LoadingLabel("Перевожу…")

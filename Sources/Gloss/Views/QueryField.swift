@@ -3,7 +3,8 @@ import GlossCore
 import SwiftUI
 
 /// QueryField is the multiline query editor: 3 to 6 lines high or as high as the user
-/// set it, a longer text scrolls with a scroller. Enter submits, ⌥Enter inserts a line break.
+/// set it, a longer text scrolls with a scroller. Enter submits, ⇧Enter or ⌥Enter
+/// inserts a line break.
 struct QueryField: View {
     @Binding var text: String
     /// Height set with the divider; `nil` fits the field to its text.
@@ -105,7 +106,7 @@ private struct QueryTextView: NSViewRepresentable {
         textView.font = font
         textView.textColor = .textColor
         textView.string = text
-        textView.toolTip = "Enter - перевести, ⌥Enter - новая строка"
+        textView.toolTip = "Enter - перевести, ⇧Enter или ⌥Enter - новая строка"
         let coordinator = context.coordinator
         textView.delegate = coordinator
         textView.onFocusChange = { [weak coordinator] isFocused in
@@ -228,8 +229,10 @@ private struct QueryTextView: NSViewRepresentable {
         }
 
         func textView(_ textView: NSTextView, doCommandBy selector: Selector) -> Bool {
-            // ⌥Enter sends insertNewlineIgnoringFieldEditor and inserts a line break
-            guard selector == #selector(NSResponder.insertNewline(_:)) else {
+            // ⌥Enter sends insertNewlineIgnoringFieldEditor and inserts a line break;
+            // ⇧Enter sends insertNewline like Enter, as in chats it breaks the line
+            let isShifted = NSApp.currentEvent?.modifierFlags.contains(.shift) == true
+            guard selector == #selector(NSResponder.insertNewline(_:)), !isShifted else {
                 return false
             }
             parent.onSubmit()
