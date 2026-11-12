@@ -1,10 +1,15 @@
 import Foundation
+import Synchronization
 import Testing
 import Translation
 @testable import GlossCore
 
 private let hello = Query(text: "Hello, how are you?", source: .en, target: .ru, kind: .sentence)
 private let word = Query(text: "бежать", source: .ru, target: .en, kind: .dictionary)
+
+private func noDelayProvider(_ translator: FakeTextTranslator) -> AppleTranslationProvider {
+    AppleTranslationProvider(translator: translator, packRetryDelay: .zero)
+}
 
 struct AppleTranslationProviderTests {
     @Test func supportsBothQueryKinds() {
@@ -65,9 +70,23 @@ struct AppleTranslationProviderTests {
         let translator = FakeTextTranslator(status: .supported, translation: "")
 
         await #expect(throws: ProviderError.languagePackMissing) {
-            try await AppleTranslationProvider(translator: translator).translate(hello)
+            try await noDelayProvider(translator).translate(hello)
         }
+        #expect(translator.statusDirections == [.enRu, .enRu])
         #expect(translator.texts.isEmpty)
+    }
+
+    @Test func translatesWhenPackTurnsUpOnSecondCheck() async throws {
+        let translator = FakeTextTranslator(
+            firstStatuses: [.supported],
+            translation: "Привет"
+        )
+
+        let result = try await noDelayProvider(translator).translate(hello)
+
+        #expect(result == .text(TextTranslation(source: hello.text, translation: "Привет")))
+        #expect(translator.statusDirections == [.enRu, .enRu])
+        #expect(translator.texts == [hello.text])
     }
 
     @Test func throwsNotFoundForUnsupportedPair() async {
@@ -76,6 +95,7 @@ struct AppleTranslationProviderTests {
         await #expect(throws: ProviderError.notFound) {
             try await AppleTranslationProvider(translator: translator).translate(hello)
         }
+        #expect(translator.statusDirections == [.enRu])
         #expect(translator.texts.isEmpty)
     }
 
@@ -83,8 +103,29 @@ struct AppleTranslationProviderTests {
         let translator = FakeTextTranslator(error: TranslationError.notInstalled)
 
         await #expect(throws: ProviderError.languagePackMissing) {
-            try await AppleTranslationProvider(translator: translator).translate(hello)
+            try await noDelayProvider(translator).translate(hello)
         }
+        #expect(translator.texts == [hello.text, hello.text])
+    }
+
+    @Test func translatesWhenNotInstalledClearsOnSecondAttempt() async throws {
+        let attempts = Mutex(0)
+        let translator = FakeTextTranslator { text in
+            let attempt = attempts.withLock { count in
+                count += 1
+                return count
+            }
+            guard attempt > 1 else {
+                throw TranslationError.notInstalled
+            }
+            return "<\(text)>"
+        }
+
+        let result = try await noDelayProvider(translator).translate(hello)
+
+        let translation = "<\(hello.text)>"
+        #expect(result == .text(TextTranslation(source: hello.text, translation: translation)))
+        #expect(translator.texts == [hello.text, hello.text])
     }
 
     @Test(arguments: [
@@ -109,6 +150,7 @@ struct AppleTranslationProviderTests {
             await #expect(throws: ProviderError.invalidResponse) {
                 try await AppleTranslationProvider(translator: translator).translate(hello)
             }
+            #expect(translator.texts == [hello.text])
         }
     }
 }
@@ -157,6 +199,25 @@ struct AppleTranslationProviderCancellationTests {
         await #expect(throws: CancellationError.self) {
             try await task.value
         }
+    }
+
+    @Test func cancelsWhileWaitingToCheckPackAgain() async {
+        let translator = FakeTextTranslator(status: .supported, translation: "")
+        let provider = AppleTranslationProvider(
+            translator: translator,
+            packRetryDelay: .seconds(60)
+        )
+        let task = Task { try await provider.translate(hello) }
+
+        while translator.statusDirections.isEmpty {
+            await Task.yield()
+        }
+        task.cancel()
+
+        await #expect(throws: CancellationError.self) {
+            try await task.value
+        }
+        #expect(translator.statusDirections == [.enRu])
     }
 }
 

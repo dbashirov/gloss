@@ -17,6 +17,7 @@ final class FakeTextTranslator: TextTranslator {
         var texts: [String] = []
         var statusDirections: [Direction] = []
         var translateDirections: [Direction] = []
+        var firstStatuses: [LanguageAvailability.Status] = []
     }
 
     private let statuses: [Direction: LanguageAvailability.Status]
@@ -27,6 +28,16 @@ final class FakeTextTranslator: TextTranslator {
     init(statuses: [Direction: LanguageAvailability.Status], handler: @escaping Handler) {
         self.statuses = statuses
         self.handler = handler
+    }
+
+    /// Answers the first status checks with `firstStatuses`, then with `status`.
+    convenience init(
+        firstStatuses: [LanguageAvailability.Status],
+        status: LanguageAvailability.Status = .installed,
+        translation: String
+    ) {
+        self.init(status: status) { _ in translation }
+        calls.withLock { $0.firstStatuses = firstStatuses }
     }
 
     convenience init(
@@ -61,8 +72,11 @@ final class FakeTextTranslator: TextTranslator {
         to target: Language
     ) async -> LanguageAvailability.Status {
         let direction = Direction(source: source, target: target)
-        calls.withLock { $0.statusDirections.append(direction) }
-        return statuses[direction] ?? .unsupported
+        let first = calls.withLock { calls in
+            calls.statusDirections.append(direction)
+            return calls.firstStatuses.isEmpty ? nil : calls.firstStatuses.removeFirst()
+        }
+        return first ?? statuses[direction] ?? .unsupported
     }
 
     func translate(

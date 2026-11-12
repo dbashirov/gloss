@@ -292,7 +292,7 @@ struct RouterIntegrationTests {
         let secrets = FakeSecretStore(values)
         return Router(providers: [
             YandexDictionaryProvider(http: http, secrets: secrets),
-            AppleTranslationProvider(translator: translator),
+            AppleTranslationProvider(translator: translator, packRetryDelay: .zero),
         ])
     }
 
